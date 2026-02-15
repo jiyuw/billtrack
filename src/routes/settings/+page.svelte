@@ -30,17 +30,28 @@
 	let editingCategoryId = $state<number | null>(null);
 	let editingAssetTagId = $state<number | null>(null);
 	let editingPaymentMethodId = $state<number | null>(null);
+
+	type AssetTagType = '' | 'house' | 'vehicle';
+	type AssetTagBannerPattern = 'solid' | 'stripes' | 'dots' | 'crosshatch';
+	type PaymentMethodType = 'credit_card' | 'checking' | 'savings';
+
 	let categoryForm = $state({
 		name: '',
 		color: '#3B82F6',
 		icon: ''
 	});
-	let assetTagForm = $state({
+	let assetTagForm = $state<{
+		name: string;
+		type: AssetTagType;
+		color: string;
+		bannerPattern: AssetTagBannerPattern;
+	}>({
 		name: '',
 		type: '',
-		color: '#6b7280'
+		color: '#6b7280',
+		bannerPattern: 'solid'
 	});
-	let paymentMethodForm = $state({
+	let paymentMethodForm = $state<{ nickname: string; lastFour: string; type: PaymentMethodType }>({
 		nickname: '',
 		lastFour: '',
 		type: 'credit_card'
@@ -68,7 +79,8 @@
 		assetTagForm = {
 			name: '',
 			type: 'house',
-			color: '#10b981'
+			color: '#10b981',
+			bannerPattern: 'solid'
 		};
 		showAddAssetTagModal = true;
 	}
@@ -91,8 +103,9 @@
 		if (tag) {
 			assetTagForm = {
 				name: tag.name,
-				type: tag.type || '',
-				color: tag.color || '#6b7280'
+				type: (tag.type as AssetTagType) || '',
+				color: tag.color || '#6b7280',
+				bannerPattern: (tag.bannerPattern as AssetTagBannerPattern) || 'solid'
 			};
 			editingAssetTagId = id;
 			showEditAssetTagModal = true;
@@ -137,7 +150,8 @@
 				body: JSON.stringify({
 					name: assetTagForm.name,
 					type: assetTagForm.type || null,
-					color: assetTagForm.color || null
+					color: assetTagForm.color || null,
+					bannerPattern: assetTagForm.bannerPattern
 				})
 			});
 
@@ -192,7 +206,8 @@
 				body: JSON.stringify({
 					name: assetTagForm.name,
 					type: assetTagForm.type || null,
-					color: assetTagForm.color || null
+					color: assetTagForm.color || null,
+					bannerPattern: assetTagForm.bannerPattern
 				})
 			});
 

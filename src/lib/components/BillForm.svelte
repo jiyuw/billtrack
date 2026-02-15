@@ -281,15 +281,16 @@
 		{#if isRecurring}
 			<div class="space-y-4">
 				<div>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-						Frequency
-					</label>
+						<label for="recurrenceInterval" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Frequency
+						</label>
 					<div class="mt-1 flex items-center gap-2">
 						<span class="text-sm text-gray-600 dark:text-gray-400">Every</span>
 						<input
-							type="number"
-							min="1"
-							bind:value={recurrenceInterval}
+								type="number"
+								id="recurrenceInterval"
+								min="1"
+								bind:value={recurrenceInterval}
 							step="1"
 							class="w-20 rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
 						/>

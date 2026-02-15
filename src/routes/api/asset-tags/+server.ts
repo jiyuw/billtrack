@@ -25,7 +25,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		const newTag: NewAssetTag = {
 			name: data.name,
 			type: data.type || null,
-			color: data.color || null
+			color: data.color || null,
+			bannerPattern: data.bannerPattern || 'solid'
 		};
 
 		const tag = createAssetTag(newTag);

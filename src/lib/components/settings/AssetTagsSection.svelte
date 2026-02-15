@@ -2,6 +2,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import { Home, Car, Tag } from 'lucide-svelte';
 	import type { AssetTag } from '$lib/server/db/schema';
+	import { getAssetTagBannerStyle } from '$lib/utils/asset-tag-banner';
 
 	let {
 		assetTags,
@@ -65,7 +66,13 @@
 					{@const DisplayIcon = tag.type ? iconMap[tag.type] : Tag}
 					{@const colorMap = { house: '#10b981', vehicle: '#3b82f6', other: '#6b7280' }}
 					{@const iconColor = tag.color || (tag.type ? colorMap[tag.type] : colorMap.other)}
-					<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:bg-gray-700 dark:border-gray-600">
+					<div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:bg-gray-700 dark:border-gray-600">
+						<div
+							class="h-6"
+							style={getAssetTagBannerStyle(tag.color, tag.bannerPattern)}
+							title={`Pattern: ${tag.bannerPattern || 'solid'}${tag.bannerPattern === 'stripes' ? ' (Diagonal Lines)' : ''}`}
+						></div>
+						<div class="p-4">
 						<div class="flex items-start justify-between">
 							<div class="flex items-center gap-3">
 								<div
@@ -113,6 +120,7 @@
 									</svg>
 								</button>
 							</div>
+						</div>
 						</div>
 					</div>
 				{/each}

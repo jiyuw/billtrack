@@ -16,6 +16,11 @@ export const assetTags = sqliteTable('asset_tags', {
 	name: text('name').notNull().unique(),
 	type: text('type', { enum: ['house', 'vehicle'] }),
 	color: text('color'),
+	bannerPattern: text('banner_pattern', {
+		enum: ['solid', 'stripes', 'dots', 'crosshatch']
+	})
+		.notNull()
+		.default('solid'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`),

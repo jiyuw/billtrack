@@ -1,11 +1,13 @@
 <script lang="ts">
 	import Modal from '$lib/components/Modal.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import { getAssetTagBannerStyle } from '$lib/utils/asset-tag-banner';
 
 	type AssetTagForm = {
 		name: string;
 		type: '' | 'house' | 'vehicle';
 		color: string;
+		bannerPattern: 'solid' | 'stripes' | 'dots' | 'crosshatch';
 	};
 
 	let {
@@ -88,6 +90,30 @@
 					bind:value={assetTagForm.color}
 					class="flex-1 rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
 				/>
+			</div>
+		</div>
+
+		<div>
+			<label
+				for="{mode}-asset-tag-pattern"
+				class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+			>
+				Banner Texture
+			</label>
+			<div class="mt-1 flex gap-2">
+				<select
+					id="{mode}-asset-tag-pattern"
+					bind:value={assetTagForm.bannerPattern}
+					class="flex-1 rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+				>
+					<option value="solid">Solid</option>
+					<option value="stripes">Diagonal Lines</option>
+					<option value="dots">Dots</option>
+					<option value="crosshatch">Crosshatch</option>
+				</select>
+				<div class="w-20 rounded-md border border-gray-200 overflow-hidden dark:border-gray-600">
+					<div class="h-10" style={getAssetTagBannerStyle(assetTagForm.color, assetTagForm.bannerPattern)}></div>
+				</div>
 			</div>
 		</div>
 

@@ -186,6 +186,7 @@ function initializeDatabase() {
 				name TEXT NOT NULL UNIQUE,
 				type TEXT,
 				color TEXT,
+				banner_pattern TEXT NOT NULL DEFAULT 'solid',
 				created_at INTEGER NOT NULL DEFAULT (unixepoch()),
 				updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 			)
@@ -196,6 +197,7 @@ function initializeDatabase() {
 	const assetTagColumns = sqlite.prepare("PRAGMA table_info(asset_tags)").all() as Array<{ name: string }>;
 	const hasAssetTagType = assetTagColumns.some((col) => col.name === 'type');
 	const hasAssetTagColor = assetTagColumns.some((col) => col.name === 'color');
+	const hasAssetTagBannerPattern = assetTagColumns.some((col) => col.name === 'banner_pattern');
 	if (!hasAssetTagType) {
 		sqlite.exec('ALTER TABLE asset_tags ADD COLUMN type TEXT');
 		console.log('Added type column to asset_tags table');
@@ -203,6 +205,10 @@ function initializeDatabase() {
 	if (!hasAssetTagColor) {
 		sqlite.exec('ALTER TABLE asset_tags ADD COLUMN color TEXT');
 		console.log('Added color column to asset_tags table');
+	}
+	if (!hasAssetTagBannerPattern) {
+		sqlite.exec("ALTER TABLE asset_tags ADD COLUMN banner_pattern TEXT NOT NULL DEFAULT 'solid'");
+		console.log('Added banner_pattern column to asset_tags table');
 	}
 
 	// Drop legacy tables from removed features

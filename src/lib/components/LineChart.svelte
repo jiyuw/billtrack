@@ -35,7 +35,7 @@
 	} = $props();
 
 	let canvas: HTMLCanvasElement | null = null;
-	let chart: Chart | null = null;
+	let chart: Chart<'line', { x: number; y: number }[], unknown> | null = null;
 
 	function renderChart() {
 		if (!canvas) return;
@@ -43,13 +43,21 @@
 			chart.destroy();
 		}
 
+		const chartPoints = points.map((point) => ({
+			x: point.x.getTime(),
+			y: point.y
+		}));
+		const boundaryTimestamps = cycleBoundaries.map((date) => date.getTime());
+		const minRange = rangeStart?.getTime();
+		const maxRange = rangeEnd?.getTime();
+
 		chart = new Chart(canvas, {
 			type: 'line',
 			data: {
 				datasets: [
 					{
 						label: 'Payments',
-						data: points,
+						data: chartPoints,
 						borderColor: '#3b82f6',
 						backgroundColor: 'transparent',
 						tension: 0,
@@ -79,10 +87,10 @@
 						}
 					},
 					annotation: {
-						annotations: cycleBoundaries.map((date, index) => ({
+						annotations: boundaryTimestamps.map((timestamp) => ({
 							type: 'line',
-							xMin: date,
-							xMax: date,
+							xMin: timestamp,
+							xMax: timestamp,
 							borderColor: 'rgba(148, 163, 184, 0.35)',
 							borderWidth: 1,
 							borderDash: [4, 4]
@@ -97,8 +105,8 @@
 							displayFormats: { month: 'MMM yyyy' }
 						},
 						grid: { display: false },
-						min: rangeStart,
-						max: rangeEnd,
+						min: minRange,
+						max: maxRange,
 						ticks: {
 							maxTicksLimit: 6
 						}

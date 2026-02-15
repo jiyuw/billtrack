@@ -7,7 +7,13 @@ export type BillStatus = 'paid' | 'upcoming' | 'overdue';
 // Extended bill type with category details
 export interface BillWithCategory extends Bill {
 	category?: Category | null;
-	assetTag?: { id: number; name: string; type?: 'house' | 'vehicle' | null; color?: string | null } | null;
+	assetTag?: {
+		id: number;
+		name: string;
+		type?: 'house' | 'vehicle' | null;
+		color?: string | null;
+		bannerPattern?: 'solid' | 'stripes' | 'dots' | 'crosshatch' | null;
+	} | null;
 }
 
 // Bill cycle with computed fields
@@ -30,7 +36,13 @@ export interface BillWithCycle extends Bill {
 	focusCycle?: BillCycleWithComputed | null;
 	usageStats?: BillUsageStats | null;
 	category?: Category | null;
-	assetTag?: { id: number; name: string; type?: 'house' | 'vehicle' | null; color?: string | null } | null;
+	assetTag?: {
+		id: number;
+		name: string;
+		type?: 'house' | 'vehicle' | null;
+		color?: string | null;
+		bannerPattern?: 'solid' | 'stripes' | 'dots' | 'crosshatch' | null;
+	} | null;
 	paymentMethod?: { id: number; nickname: string; lastFour: string } | null;
 }
 

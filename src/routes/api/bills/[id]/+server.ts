@@ -1,7 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getBillById, updateBill, deleteBill, markBillAsPaid } from '$lib/server/db/queries';
-import { createPayment, createPaymentForCycle, getFocusCycleForBill } from '$lib/server/db/bill-queries';
+import {
+	createPayment,
+	createPaymentForCycle,
+	getCurrentCycle,
+	getFocusCycleForBill,
+	rebuildCurrentAndFutureCycles
+} from '$lib/server/db/bill-queries';
 import { calculateNextDueDate } from '$lib/server/utils/recurrence';
 import { parseLocalDate } from '$lib/utils/dates';
 import { endOfDay } from 'date-fns';
@@ -28,6 +34,11 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 	try {
 		const id = parseInt(params.id);
 		const data = await request.json();
+		const existingBill = getBillById(id);
+		if (!existingBill) {
+			return json({ error: 'Bill not found' }, { status: 404 });
+		}
+		const oldCurrentCycle = await getCurrentCycle(id);
 
 		// Handle both ISO timestamp and YYYY-MM-DD formats for dueDate
 		let parsedDueDate: Date | undefined;
@@ -80,10 +91,21 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 			(key) => updateData[key] === undefined && delete updateData[key]
 		);
 
-		const bill = updateBill(id, updateData);
+		const dueDateChanged = parsedDueDate
+			? parsedDueDate.getTime() !== existingBill.dueDate.getTime()
+			: false;
+		const recurrenceChanged =
+			(updateData.isRecurring !== undefined && updateData.isRecurring !== existingBill.isRecurring) ||
+			(updateData.recurrenceInterval !== undefined &&
+				updateData.recurrenceInterval !== existingBill.recurrenceInterval) ||
+			(updateData.recurrenceUnit !== undefined &&
+				updateData.recurrenceUnit !== existingBill.recurrenceUnit);
 
-		if (!bill) {
-			return json({ error: 'Bill not found' }, { status: 404 });
+		const bill = updateBill(id, updateData);
+		if (!bill) return json({ error: 'Bill not found' }, { status: 404 });
+
+		if (dueDateChanged || recurrenceChanged) {
+			await rebuildCurrentAndFutureCycles(id, oldCurrentCycle?.startDate);
 		}
 
 		return json(bill);

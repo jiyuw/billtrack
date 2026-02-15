@@ -116,15 +116,18 @@ export const actions: Actions = {
 				importedCounts.categories = importData.data.categories.length;
 			}
 
-			if (importData.data.assetTags?.length > 0) {
-				const convertedAssetTags = convertDatesToObjects(importData.data.assetTags);
+			const importAssetTags = importData.data.assetTags ?? [];
+			if (importAssetTags.length > 0) {
+				const convertedAssetTags = convertDatesToObjects(importAssetTags);
 				db.insert(assetTags).values(convertedAssetTags).run();
-				importedCounts.assetTags = importData.data.assetTags.length;
+				importedCounts.assetTags = importAssetTags.length;
 			}
 
-			if (importData.data.paymentMethods?.length > 0) {
-				db.insert(paymentMethods).values(importData.data.paymentMethods).run();
-				importedCounts.paymentMethods = importData.data.paymentMethods.length;
+			const importPaymentMethods = importData.data.paymentMethods ?? [];
+			if (importPaymentMethods.length > 0) {
+				const convertedPaymentMethods = convertDatesToObjects(importPaymentMethods);
+				db.insert(paymentMethods).values(convertedPaymentMethods).run();
+				importedCounts.paymentMethods = importPaymentMethods.length;
 			}
 
 			if (importData.data.bills?.length > 0) {
@@ -145,10 +148,11 @@ export const actions: Actions = {
 				importedCounts.billPayments = importData.data.billPayments.length;
 			}
 
-			if (importData.data.userPreferences?.length > 0) {
-				const convertedPrefs = convertDatesToObjects(importData.data.userPreferences);
+			const importUserPreferences = importData.data.userPreferences ?? [];
+			if (importUserPreferences.length > 0) {
+				const convertedPrefs = convertDatesToObjects(importUserPreferences);
 				db.insert(userPreferences).values(convertedPrefs).run();
-				importedCounts.userPreferences = importData.data.userPreferences.length;
+				importedCounts.userPreferences = importUserPreferences.length;
 			}
 
 			console.log('Import successful:', importedCounts);

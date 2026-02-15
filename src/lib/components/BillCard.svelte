@@ -7,6 +7,7 @@ import { Home, Car, HelpCircle } from 'lucide-svelte';
 	import { getRecurrenceDescription } from '$lib/utils/recurrence';
 	import { goto } from '$app/navigation';
 	import { formatCurrency } from '$lib/utils/format';
+	import { getAssetTagBannerStyle } from '$lib/utils/asset-tag-banner';
 
 	interface Props {
 		bill: BillWithCategory | BillWithCycle;
@@ -84,22 +85,25 @@ import { Home, Car, HelpCircle } from 'lucide-svelte';
 	tabindex="0"
 	onkeydown={(e) => e.key === 'Enter' && handleCardClick(e)}
 >
-	<div class="p-4">
-		<div class="mb-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-			{#if 'assetTag' in bill && bill.assetTag}
-				{#if bill.assetTag.type === 'house'}
-					<Home size={14} />
-				{:else if bill.assetTag.type === 'vehicle'}
-					<Car size={14} />
-				{:else}
-					<HelpCircle size={14} />
-				{/if}
-				{bill.assetTag.name}
+	<div
+		class="flex items-center gap-1.5 px-4 py-1.5 text-sm leading-none font-semibold text-white"
+		style={getAssetTagBannerStyle(('assetTag' in bill ? bill.assetTag?.color : null), ('assetTag' in bill ? bill.assetTag?.bannerPattern : null))}
+	>
+		{#if 'assetTag' in bill && bill.assetTag}
+			{#if bill.assetTag.type === 'house'}
+				<Home size={15} />
+			{:else if bill.assetTag.type === 'vehicle'}
+				<Car size={15} />
 			{:else}
-				<HelpCircle size={14} />
-				Unknown Asset
+				<HelpCircle size={15} />
 			{/if}
-		</div>
+			<span class="truncate">{bill.assetTag.name}</span>
+		{:else}
+			<HelpCircle size={15} />
+			<span>Unknown Asset</span>
+		{/if}
+	</div>
+	<div class="p-4">
 		<div class="mb-2 flex flex-wrap items-center gap-2">
 			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">{bill.name}</h3>
 			{#if bill.isRecurring}
@@ -168,10 +172,6 @@ import { Home, Car, HelpCircle } from 'lucide-svelte';
 				</span>
 			</div>
 		</div>
-
-		{#if bill.notes}
-			<p class="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{bill.notes}</p>
-		{/if}
 
 		<!-- Cycle Progress (if available) -->
 		{#if bill.isVariable}

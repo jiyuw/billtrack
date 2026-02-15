@@ -1,5 +1,6 @@
 import { db } from './index';
 import { bills, categories } from './schema';
+import type { NewBill } from './schema';
 import { addDays, addMonths } from 'date-fns';
 
 async function seedBills() {
@@ -10,7 +11,7 @@ async function seedBills() {
 		const rentCategory = allCategories.find((c) => c.name === 'Mortgage');
 		const insuranceCategory = allCategories.find((c) => c.name === 'Insurance');
 
-		const sampleBills = [
+		const sampleBills: NewBill[] = [
 			{
 				name: 'Electric Bill',
 				amount: 125.50,

@@ -6,7 +6,7 @@
 	import PaymentModal from '$lib/components/PaymentModal.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import FloatingActionButton from '$lib/components/FloatingActionButton.svelte';
-	import type { BillWithCategory } from '$lib/types/bill';
+	import type { BillWithCategory, BillWithCycle } from '$lib/types/bill';
 	import { invalidateAll } from '$app/navigation';
 import { endOfDay } from 'date-fns';
 

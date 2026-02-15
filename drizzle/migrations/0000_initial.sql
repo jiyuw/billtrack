@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `asset_tags` (
 	`name` text NOT NULL,
 	`type` text,
 	`color` text,
+	`banner_pattern` text DEFAULT 'solid' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );

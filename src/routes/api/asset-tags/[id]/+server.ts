@@ -29,7 +29,8 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 		const updateData: Partial<NewAssetTag> = {
 			name: data.name,
 			type: data.type ?? null,
-			color: data.color ?? null
+			color: data.color ?? null,
+			bannerPattern: data.bannerPattern ?? 'solid'
 		};
 
 		Object.keys(updateData).forEach(

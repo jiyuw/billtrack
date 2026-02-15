@@ -3,12 +3,14 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { formatCurrency } from '$lib/utils/format';
 	import { getRecurrenceDescription } from '$lib/utils/recurrence';
+	import { getAssetTagBannerStyle } from '$lib/utils/asset-tag-banner';
 	import { format } from 'date-fns';
 	import {
 		ArrowLeft,
 		Calendar,
 		DollarSign,
 		TrendingUp,
+		Info,
 		Home,
 		Car,
 		Zap,
@@ -76,13 +78,13 @@
 			}));
 	});
 
-	const assetIcon = $derived.by(() => {
+	const AssetIcon = $derived.by(() => {
 		if (bill.assetTag?.type === 'house') return Home;
 		if (bill.assetTag?.type === 'vehicle') return Car;
 		return null;
 	});
 
-	const categoryIcon = $derived.by(() => {
+	const CategoryIcon = $derived.by(() => {
 		const iconMap = {
 			utility: Zap,
 			insurance: ShieldCheck,
@@ -245,6 +247,12 @@
 						One-time bill • Due {format((focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate, 'MMM d, yyyy')}
 					{/if}
 				</p>
+				{#if bill.notes}
+					<div class="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-300/70 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-800 dark:border-slate-700/50 dark:bg-slate-800/60 dark:text-slate-200">
+						<Info size={14} class="shrink-0" />
+						<p class="italic whitespace-pre-wrap break-words">{bill.notes}</p>
+					</div>
+				{/if}
 				<div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
 					<div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
 						<p class="text-xs text-gray-500 dark:text-gray-400">Autopay</p>
@@ -266,15 +274,11 @@
 						<p class="text-xs text-gray-500 dark:text-gray-400">Category</p>
 						{#if bill.category}
 							<div class="mt-1 flex items-center gap-2">
-								{#if categoryIcon}
-									<svelte:component
-										this={categoryIcon}
-										size={16}
-										style="color: {bill.category.color}"
-									/>
-								{:else if bill.category.icon}
-									<span class="text-sm" style="color: {bill.category.color}">{bill.category.icon}</span>
-								{/if}
+									{#if CategoryIcon}
+										<CategoryIcon size={16} style="color: {bill.category.color}" />
+									{:else if bill.category.icon}
+										<span class="text-sm" style="color: {bill.category.color}">{bill.category.icon}</span>
+									{/if}
 								<p class="text-sm font-medium" style="color: {bill.category.color}">
 									{bill.category.name}
 								</p>
@@ -287,11 +291,16 @@
 					<div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
 						<p class="text-xs text-gray-500 dark:text-gray-400">Asset Tag</p>
 						{#if bill.assetTag}
-							<div class="mt-1 flex items-center gap-2">
-								{#if assetIcon}
-									<svelte:component this={assetIcon} size={16} class="text-gray-600 dark:text-gray-300" />
+							<div
+								class="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white"
+								style={getAssetTagBannerStyle(bill.assetTag.color, bill.assetTag.bannerPattern)}
+							>
+								{#if AssetIcon}
+									<AssetIcon size={14} />
+								{:else}
+									<Info size={14} />
 								{/if}
-								<p class="text-sm font-medium text-gray-900 dark:text-gray-100">{bill.assetTag.name}</p>
+								<p class="truncate">{bill.assetTag.name}</p>
 							</div>
 						{:else}
 							<p class="text-sm font-medium text-gray-900 dark:text-gray-100">None</p>

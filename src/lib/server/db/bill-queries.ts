@@ -8,7 +8,7 @@ import type {
 	NewBillPayment
 } from './schema';
 import type { BillWithCycle, BillCycleWithComputed, BillUsageStats } from '$lib/types/bill';
-import { eq, and, desc, asc, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm';
 import {
 	calculateBillCycleDates,
 	findCycleForPaymentDate,
@@ -449,6 +449,123 @@ export async function deletePayment(id: number): Promise<void> {
 	if (cycle.length > 0) {
 		await recalculateCyclesFrom(bill, cycle[0].startDate);
 	}
+}
+
+/**
+ * Rebuild current and future cycles after schedule changes (due date / recurrence).
+ * Past cycles are preserved for history.
+ */
+export async function rebuildCurrentAndFutureCycles(
+	billId: number,
+	rebuildFromOverride?: Date
+): Promise<void> {
+	const { getBillById, updateBill } = await import('./queries');
+	const bill = getBillById(billId);
+	if (!bill) {
+		throw new Error('Bill not found');
+	}
+
+	const now = new Date();
+	const currentCycleDates = calculateBillCycleDates(bill, now);
+	const rebuildFrom = rebuildFromOverride && rebuildFromOverride.getTime() < currentCycleDates.startDate.getTime()
+		? rebuildFromOverride
+		: currentCycleDates.startDate;
+	const rebuildFromTimestamp = Math.floor(rebuildFrom.getTime() / 1000);
+
+	const cyclesToReplace = await db
+		.select({ id: billCycles.id })
+		.from(billCycles)
+		.where(
+			and(
+				eq(billCycles.billId, bill.id),
+				sql`${billCycles.startDate} >= ${rebuildFromTimestamp}`
+			)
+		);
+
+	const cycleIdsToReplace = cyclesToReplace.map((cycle) => cycle.id);
+
+	const paymentsSnapshot = cycleIdsToReplace.length > 0
+		? await db
+			.select()
+			.from(billPayments)
+			.where(
+				and(
+					eq(billPayments.billId, bill.id),
+					inArray(billPayments.cycleId, cycleIdsToReplace)
+				)
+			)
+			.orderBy(asc(billPayments.paymentDate))
+		: [];
+
+	// Remove current/future cycles and their payments (payments are restored below).
+	await db
+		.delete(billCycles)
+		.where(
+			and(
+				eq(billCycles.billId, bill.id),
+				sql`${billCycles.startDate} >= ${rebuildFromTimestamp}`
+			)
+		);
+
+	const seedCycles = generateBillCyclesBetween(bill, rebuildFrom, now);
+	for (const cycle of seedCycles) {
+		await db.insert(billCycles).values({
+			billId: bill.id,
+			startDate: cycle.startDate,
+			endDate: cycle.endDate,
+			expectedAmount: bill.amount,
+			totalPaid: 0,
+			isPaid: false
+		});
+	}
+
+	const getOrCreateCycleId = async (startDate: Date, endDate: Date): Promise<number> => {
+		const existing = await db
+			.select({ id: billCycles.id })
+			.from(billCycles)
+			.where(and(eq(billCycles.billId, bill.id), eq(billCycles.startDate, startDate)))
+			.limit(1);
+
+		if (existing.length > 0) return existing[0].id;
+
+		const inserted = await db
+			.insert(billCycles)
+			.values({
+				billId: bill.id,
+				startDate,
+				endDate,
+				expectedAmount: bill.amount,
+				totalPaid: 0,
+				isPaid: false
+			})
+			.returning({ id: billCycles.id });
+
+		return inserted[0].id;
+	};
+
+	for (const payment of paymentsSnapshot) {
+		const cycleDates = findCycleForPaymentDate(bill, payment.paymentDate);
+		const targetCycleId = await getOrCreateCycleId(cycleDates.startDate, cycleDates.endDate);
+
+		await db.insert(billPayments).values({
+			billId: payment.billId,
+			cycleId: targetCycleId,
+			amount: payment.amount,
+			paymentDate: payment.paymentDate,
+			notes: payment.notes
+		});
+	}
+
+	await recalculateCyclesFrom(bill, rebuildFrom);
+
+	const focusCycle = await getFocusCycleForBill(bill.id);
+	const isPaid = focusCycle
+		? bill.isVariable
+			? focusCycle.totalPaid > 0 || focusCycle.isPaid
+			: focusCycle.isPaid || focusCycle.totalPaid >= focusCycle.expectedAmount
+		: false;
+
+	updateBill(bill.id, { isPaid });
 }
 
 /**
