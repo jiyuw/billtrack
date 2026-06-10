@@ -12,6 +12,7 @@
 	let { isOpen = $bindable(), onClose, title, children }: Props = $props();
 
 	let dialog: HTMLDialogElement;
+	let backdropPointerDown = false;
 
 	$effect(() => {
 		if (!dialog) return;
@@ -30,12 +31,17 @@
 		};
 	});
 
+	function handlePointerDown(e: PointerEvent) {
+		backdropPointerDown = e.target === dialog;
+	}
+
 	function handleBackdropClick(e: MouseEvent) {
-		// Only close if clicking directly on the dialog element (backdrop)
-		// not on any of its children
-		if (e.target === dialog) {
+		// Only close when the press both starts and ends on the backdrop.
+		if (backdropPointerDown && e.target === dialog) {
 			onClose();
 		}
+
+		backdropPointerDown = false;
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -47,6 +53,7 @@
 
 <dialog
 	bind:this={dialog}
+	onpointerdown={handlePointerDown}
 	onclick={handleBackdropClick}
 	onkeydown={handleKeydown}
 	class="relative rounded-lg shadow-xl bg-white dark:bg-gray-800 backdrop:bg-gray-900/50 dark:backdrop:bg-black/70 backdrop:backdrop-blur-sm"
