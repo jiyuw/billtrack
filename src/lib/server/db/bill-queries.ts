@@ -16,6 +16,8 @@ import {
 } from '../utils/bill-cycle-calculator';
 import { isBefore, isAfter, endOfDay } from 'date-fns';
 
+const cycleDueDateSql = sql`coalesce(${billCycles.dueDate}, ${billCycles.endDate})`;
+
 /**
  * Get bill with current cycle
  */
@@ -110,12 +112,12 @@ export async function getCurrentCycle(billId: number): Promise<BillCycle | undef
 		.select()
 		.from(billCycles)
 		.where(
-			and(
-				eq(billCycles.billId, billId),
-				sql`${billCycles.startDate} <= ${nowTimestamp}`,
-				sql`${billCycles.endDate} >= ${nowTimestamp}`
+				and(
+					eq(billCycles.billId, billId),
+					sql`${billCycles.startDate} <= ${nowTimestamp}`,
+					sql`${cycleDueDateSql} >= ${nowTimestamp}`
+				)
 			)
-		)
 		.limit(1);
 
 	return result[0];
@@ -129,12 +131,12 @@ export async function getCyclesForBill(billId: number): Promise<BillCycle[]> {
 		.select()
 		.from(billCycles)
 		.where(eq(billCycles.billId, billId))
-		.orderBy(desc(billCycles.startDate));
+		.orderBy(desc(cycleDueDateSql));
 }
 
 /**
  * Get the focus cycle for a bill.
- * Rule: pick the earliest unpaid cycle that ends on or before today.
+ * Rule: pick the earliest unpaid cycle that is due on or before today.
  * If none, use the current cycle (today's cycle), even if paid.
  */
 export async function getFocusCycleForBill(billId: number): Promise<BillCycle | undefined> {
@@ -149,7 +151,7 @@ export async function getFocusCycleForBill(billId: number): Promise<BillCycle | 
 			and(
 				eq(billCycles.billId, billId),
 				eq(billCycles.isPaid, false),
-				sql`${billCycles.endDate} <= ${todayEndTimestamp}`
+				sql`${cycleDueDateSql} <= ${todayEndTimestamp}`
 			)
 		)
 		.orderBy(asc(billCycles.startDate))
@@ -163,8 +165,8 @@ export async function getFocusCycleForBill(billId: number): Promise<BillCycle | 
 	const latestPast = await db
 		.select()
 		.from(billCycles)
-		.where(and(eq(billCycles.billId, billId), sql`${billCycles.endDate} <= ${todayEndTimestamp}`))
-		.orderBy(desc(billCycles.startDate))
+		.where(and(eq(billCycles.billId, billId), sql`${cycleDueDateSql} <= ${todayEndTimestamp}`))
+		.orderBy(desc(cycleDueDateSql))
 		.limit(1);
 
 	return latestPast[0];
@@ -181,17 +183,17 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 		.select()
 		.from(billCycles)
 		.where(eq(billCycles.billId, bill.id))
-		.orderBy(desc(billCycles.endDate))
+		.orderBy(desc(cycleDueDateSql))
 		.limit(1);
 
 	let startFrom: Date;
 
 	if (latestCycle.length === 0) {
 		// No cycles exist
-		// For recurring bills, start from due date
+		// For recurring bills, start from the anchor cycle start
 		// For non-recurring bills, create single cycle
 		if (bill.isRecurring && bill.recurrenceUnit && bill.recurrenceInterval) {
-			startFrom = bill.dueDate;
+			startFrom = bill.cycleStartDate ?? bill.dueDate;
 		} else {
 			const cycleDates = calculateBillCycleDates(bill);
 
@@ -200,6 +202,7 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 				billId: bill.id,
 				startDate: cycleDates.startDate,
 				endDate: cycleDates.endDate,
+				dueDate: cycleDates.dueDate,
 				expectedAmount: bill.amount,
 				totalPaid: 0,
 				isPaid: bill.isPaid
@@ -210,7 +213,8 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 		const latest = latestCycle[0];
 
 		// If current cycle exists, we're done
-		if (isAfter(latest.endDate, now) || latest.endDate.getTime() === now.getTime()) {
+		const latestDueDate = latest.dueDate ?? latest.endDate;
+		if (isAfter(latestDueDate, now) || latestDueDate.getTime() === now.getTime()) {
 			return;
 		}
 
@@ -222,7 +226,7 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 		// Start from the next cycle after the latest
 		const nextCycleDates = calculateBillCycleDates(
 			bill,
-			new Date(latest.endDate.getTime() + 24 * 60 * 60 * 1000)
+			new Date(latestDueDate.getTime() + 24 * 60 * 60 * 1000)
 		);
 		startFrom = nextCycleDates.startDate;
 	}
@@ -235,6 +239,7 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 			billId: bill.id,
 			startDate: cycle.startDate,
 			endDate: cycle.endDate,
+			dueDate: cycle.dueDate,
 			expectedAmount: bill.amount,
 			totalPaid: 0,
 			isPaid: false
@@ -294,6 +299,7 @@ export async function createPayment(
 				billId: data.billId,
 				startDate: cycleDates.startDate,
 				endDate: cycleDates.endDate,
+				dueDate: cycleDates.dueDate,
 				expectedAmount: bill.amount,
 				totalPaid: 0,
 				isPaid: false
@@ -378,10 +384,29 @@ export async function updatePayment(
 	const bill = getBillById(oldPayment.billId);
 	if (!bill) throw new Error('Bill not found');
 
-	// If payment date changed, we need to move the payment to a different cycle
 	let newCycleId = oldPayment.cycleId;
+	let recalculationStartDate: Date | null = null;
 
-	if (data.paymentDate && data.paymentDate.getTime() !== oldPayment.paymentDate.getTime()) {
+	if (data.cycleId !== undefined) {
+		const selectedCycle = await db
+			.select()
+			.from(billCycles)
+			.where(and(eq(billCycles.id, data.cycleId), eq(billCycles.billId, bill.id)))
+			.limit(1);
+
+		if (selectedCycle.length === 0) {
+			throw new Error('Cycle not found');
+		}
+
+		newCycleId = selectedCycle[0].id;
+		recalculationStartDate = selectedCycle[0].startDate;
+	}
+
+	if (
+		data.cycleId === undefined &&
+		data.paymentDate &&
+		data.paymentDate.getTime() !== oldPayment.paymentDate.getTime()
+	) {
 		const newCycleDates = findCycleForPaymentDate(bill, data.paymentDate);
 
 		const newCycle = await db
@@ -397,6 +422,7 @@ export async function updatePayment(
 
 		if (newCycle.length > 0) {
 			newCycleId = newCycle[0].id;
+			recalculationStartDate = newCycle[0].startDate;
 		}
 	}
 
@@ -418,7 +444,12 @@ export async function updatePayment(
 		.limit(1);
 
 	if (oldCycle.length > 0) {
-		await recalculateCyclesFrom(bill, oldCycle[0].startDate);
+		const startDate =
+			recalculationStartDate && recalculationStartDate < oldCycle[0].startDate
+				? recalculationStartDate
+				: oldCycle[0].startDate;
+
+		await recalculateCyclesFrom(bill, startDate);
 	}
 
 	return result[0];
@@ -459,7 +490,8 @@ export async function deletePayment(id: number): Promise<void> {
  */
 export async function rebuildCurrentAndFutureCycles(
 	billId: number,
-	rebuildFromOverride?: Date
+	rebuildFromOverride?: Date,
+	scope: 'future' | 'all' = 'future'
 ): Promise<void> {
 	const { getBillById, updateBill } = await import('./queries');
 	const bill = getBillById(billId);
@@ -469,9 +501,21 @@ export async function rebuildCurrentAndFutureCycles(
 
 	const now = new Date();
 	const currentCycleDates = calculateBillCycleDates(bill, now);
-	const rebuildFrom = rebuildFromOverride && rebuildFromOverride.getTime() < currentCycleDates.startDate.getTime()
-		? rebuildFromOverride
-		: currentCycleDates.startDate;
+	const earliestCycle = await db
+		.select({ startDate: billCycles.startDate })
+		.from(billCycles)
+		.where(eq(billCycles.billId, bill.id))
+		.orderBy(asc(billCycles.startDate))
+		.limit(1);
+
+	const futureRebuildFrom =
+		rebuildFromOverride && rebuildFromOverride.getTime() < currentCycleDates.startDate.getTime()
+			? rebuildFromOverride
+			: currentCycleDates.startDate;
+	const rebuildFrom =
+		scope === 'all'
+			? (earliestCycle[0]?.startDate ?? currentCycleDates.startDate)
+			: futureRebuildFrom;
 	const rebuildFromTimestamp = Math.floor(rebuildFrom.getTime() / 1000);
 
 	const cyclesToReplace = await db
@@ -509,19 +553,27 @@ export async function rebuildCurrentAndFutureCycles(
 			)
 		);
 
-	const seedCycles = generateBillCyclesBetween(bill, rebuildFrom, now);
+	const seedCycles =
+		scope === 'future'
+			? generateBillCyclesBetween(
+					bill,
+					bill.cycleStartDate ?? currentCycleDates.startDate,
+					now
+				).filter((cycle) => cycle.startDate.getTime() >= rebuildFromTimestamp * 1000)
+			: generateBillCyclesBetween(bill, rebuildFrom, now);
 	for (const cycle of seedCycles) {
 		await db.insert(billCycles).values({
 			billId: bill.id,
 			startDate: cycle.startDate,
 			endDate: cycle.endDate,
+			dueDate: cycle.dueDate,
 			expectedAmount: bill.amount,
 			totalPaid: 0,
 			isPaid: false
 		});
 	}
 
-	const getOrCreateCycleId = async (startDate: Date, endDate: Date): Promise<number> => {
+	const getOrCreateCycleId = async (startDate: Date, endDate: Date, dueDate: Date): Promise<number> => {
 		const existing = await db
 			.select({ id: billCycles.id })
 			.from(billCycles)
@@ -536,6 +588,7 @@ export async function rebuildCurrentAndFutureCycles(
 				billId: bill.id,
 				startDate,
 				endDate,
+				dueDate,
 				expectedAmount: bill.amount,
 				totalPaid: 0,
 				isPaid: false
@@ -547,7 +600,11 @@ export async function rebuildCurrentAndFutureCycles(
 
 	for (const payment of paymentsSnapshot) {
 		const cycleDates = findCycleForPaymentDate(bill, payment.paymentDate);
-		const targetCycleId = await getOrCreateCycleId(cycleDates.startDate, cycleDates.endDate);
+		const targetCycleId = await getOrCreateCycleId(
+			cycleDates.startDate,
+			cycleDates.endDate,
+			cycleDates.dueDate
+		);
 
 		await db.insert(billPayments).values({
 			billId: payment.billId,

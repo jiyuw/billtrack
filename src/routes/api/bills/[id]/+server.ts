@@ -8,7 +8,6 @@ import {
 	getFocusCycleForBill,
 	rebuildCurrentAndFutureCycles
 } from '$lib/server/db/bill-queries';
-import { calculateNextDueDate } from '$lib/server/utils/recurrence';
 import { normalizeDateForStorage } from '$lib/utils/dates';
 
 // GET /api/bills/[id] - Get a single bill
@@ -37,19 +36,43 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 		if (!existingBill) {
 			return json({ error: 'Bill not found' }, { status: 404 });
 		}
-		const oldCurrentCycle = await getCurrentCycle(id);
+		const rebuildScope = data.rebuildScope === 'all' ? 'all' : 'future';
 
 		let parsedDueDate: Date | undefined;
+		let parsedCycleStartDate: Date | undefined;
+		let parsedCycleEndDate: Date | undefined;
+		let parsedRebuildFromCycleStartDate: Date | undefined;
 		if (data.dueDate) {
 			try {
 				parsedDueDate = normalizeDateForStorage(data.dueDate, {
 					kind: 'date',
 					boundary: 'end'
 				});
+				parsedCycleStartDate = data.cycleStartDate
+					? normalizeDateForStorage(data.cycleStartDate, { kind: 'date', boundary: 'start' })
+					: undefined;
+				parsedCycleEndDate = data.cycleEndDate
+					? normalizeDateForStorage(data.cycleEndDate, { kind: 'date', boundary: 'end' })
+					: undefined;
+				parsedRebuildFromCycleStartDate = data.rebuildFromCycleStartDate
+					? normalizeDateForStorage(data.rebuildFromCycleStartDate, { kind: 'date', boundary: 'start' })
+					: undefined;
 			} catch (error) {
 				console.error('Error parsing due date:', { dueDate: data.dueDate, error });
 				return json({ error: 'Invalid due date format. Expected YYYY-MM-DD' }, { status: 400 });
 			}
+		}
+
+		const nextCycleStartDate = parsedCycleStartDate ?? existingBill.cycleStartDate ?? existingBill.dueDate;
+		const nextCycleEndDate = parsedCycleEndDate ?? existingBill.cycleEndDate ?? existingBill.dueDate;
+		const nextDueDate = parsedDueDate ?? existingBill.dueDate;
+
+		if (nextCycleStartDate.getTime() > nextCycleEndDate.getTime()) {
+			return json({ error: 'Cycle start date must be on or before cycle end date' }, { status: 400 });
+		}
+
+		if (nextDueDate.getTime() < nextCycleEndDate.getTime()) {
+			return json({ error: 'Cycle due date must be on or after the cycle end date' }, { status: 400 });
 		}
 
 		const parsedPaymentMethodId = data.paymentMethodId ? parseInt(data.paymentMethodId) : undefined;
@@ -59,13 +82,15 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 			name: data.name,
 			amount: data.amount ? parseFloat(data.amount) : undefined,
 			dueDate: parsedDueDate,
+			cycleStartDate: parsedCycleStartDate,
+			cycleEndDate: parsedCycleEndDate,
 			paymentLink: data.paymentLink,
 			categoryId: data.categoryId,
 			assetTagId: data.assetTagId ? parseInt(data.assetTagId) : undefined,
 			isRecurring: data.isRecurring,
 			recurrenceInterval: data.recurrenceInterval ? parseInt(data.recurrenceInterval) : undefined,
 			recurrenceUnit: data.recurrenceUnit,
-			recurrenceDay: data.recurrenceDay ? parseInt(data.recurrenceDay) : undefined,
+			recurrenceDay: data.recurrenceDay ? parseInt(data.recurrenceDay) : nextDueDate.getDate(),
 			isPaid: data.isPaid,
 			isAutopay: data.isAutopay,
 			paymentMethodId: normalizedPaymentMethodId,
@@ -89,6 +114,13 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 		const dueDateChanged = parsedDueDate
 			? parsedDueDate.getTime() !== existingBill.dueDate.getTime()
 			: false;
+		const cycleChanged =
+			(parsedCycleStartDate
+				? parsedCycleStartDate.getTime() !== (existingBill.cycleStartDate ?? existingBill.dueDate).getTime()
+				: false) ||
+			(parsedCycleEndDate
+				? parsedCycleEndDate.getTime() !== (existingBill.cycleEndDate ?? existingBill.dueDate).getTime()
+				: false);
 		const recurrenceChanged =
 			(updateData.isRecurring !== undefined && updateData.isRecurring !== existingBill.isRecurring) ||
 			(updateData.recurrenceInterval !== undefined &&
@@ -99,8 +131,8 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 		const bill = updateBill(id, updateData);
 		if (!bill) return json({ error: 'Bill not found' }, { status: 404 });
 
-		if (dueDateChanged || recurrenceChanged) {
-			await rebuildCurrentAndFutureCycles(id, oldCurrentCycle?.startDate);
+		if (dueDateChanged || cycleChanged || recurrenceChanged) {
+			await rebuildCurrentAndFutureCycles(id, parsedRebuildFromCycleStartDate, rebuildScope);
 		}
 
 		return json(bill);
@@ -131,7 +163,7 @@ export const DELETE: RequestHandler = async ({ params }) => {
 export const PATCH: RequestHandler = async ({ params, request }) => {
 	try {
 		const id = parseInt(params.id);
-		const { isPaid, paymentAmount, paymentDate, paymentCycleId } = await request.json();
+		const { isPaid, paymentAmount, paymentDate, paymentCycleId, paymentNotes } = await request.json();
 
 		const currentBill = getBillById(id);
 		if (!currentBill) {
@@ -141,9 +173,11 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 		// If marking as paid, create payment in the current cycle
 		if (isPaid) {
 			const amountPaid = paymentAmount !== undefined ? parseFloat(paymentAmount) : currentBill.amount;
-			const note = amountPaid !== currentBill.amount
-				? `Payment recorded. Original amount: $${currentBill.amount.toFixed(2)}`
-				: 'Payment recorded';
+			const autoNote =
+				amountPaid !== currentBill.amount
+					? `Payment recorded. Original amount: $${currentBill.amount.toFixed(2)}`
+					: 'Payment recorded';
+			const note = paymentNotes?.trim() || autoNote;
 			const parsedPaymentDate = paymentDate
 				? normalizeDateForStorage(paymentDate, { kind: 'date', boundary: 'start' })
 				: new Date();

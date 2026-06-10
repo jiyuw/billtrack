@@ -2,7 +2,7 @@
 	import Modal from './Modal.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import type { BillWithCategory } from '$lib/types/bill';
-	import type { BillCycle } from '$lib/server/db/schema';
+	import type { BillCycle, BillPayment } from '$lib/server/db/schema';
 	import { format, endOfDay } from 'date-fns';
 
 	interface Props {
@@ -10,17 +10,33 @@
 		bill: BillWithCategory | null;
 		cycles?: BillCycle[];
 		focusCycleId?: number | null;
-		onConfirm: (amount: number, paymentDate: string, cycleId: number | null) => Promise<void>;
+		existingPayment?: BillPayment | null;
+		onConfirm: (data: {
+			amount: number;
+			paymentDate: string;
+			cycleId: number | null;
+			notes?: string;
+		}) => Promise<void>;
 		onCancel: () => void;
 	}
 
-	let { isOpen = $bindable(), bill, cycles = [], focusCycleId = null, onConfirm, onCancel }: Props = $props();
+	let {
+		isOpen = $bindable(),
+		bill,
+		cycles = [],
+		focusCycleId = null,
+		existingPayment = null,
+		onConfirm,
+		onCancel
+	}: Props = $props();
 
 	let amount = $state(0);
 	let isSubmitting = $state(false);
 	let paymentDate = $state('');
+	let notes = $state('');
 	let availableCycles = $state<BillCycle[]>([]);
 	let selectedCycleId = $state<number | null>(null);
+	const isEditing = $derived(existingPayment !== null);
 
 	function normalizeCycles(input: BillCycle[]): BillCycle[] {
 		return input.map((cycle) => ({
@@ -32,14 +48,23 @@
 
 	// Update amount when bill changes
 	$effect(() => {
-		if (bill) {
-			amount = bill.amount;
-			const today = new Date();
-			const year = today.getFullYear();
-			const month = String(today.getMonth() + 1).padStart(2, '0');
-			const day = String(today.getDate()).padStart(2, '0');
-			paymentDate = `${year}-${month}-${day}`;
+		if (!bill || !isOpen) return;
+
+		if (existingPayment) {
+			amount = existingPayment.amount;
+			paymentDate = format(existingPayment.paymentDate, 'yyyy-MM-dd');
+			notes = existingPayment.notes ?? '';
+			selectedCycleId = existingPayment.cycleId;
+			return;
 		}
+
+		amount = bill.amount;
+		const today = new Date();
+		const year = today.getFullYear();
+		const month = String(today.getMonth() + 1).padStart(2, '0');
+		const day = String(today.getDate()).padStart(2, '0');
+		paymentDate = `${year}-${month}-${day}`;
+		notes = '';
 	});
 
 	$effect(() => {
@@ -81,7 +106,12 @@
 		isSubmitting = true;
 
 		try {
-			await onConfirm(parseFloat(amount.toString()), paymentDate, selectedCycleId);
+			await onConfirm({
+				amount: parseFloat(amount.toString()),
+				paymentDate,
+				cycleId: selectedCycleId,
+				notes: notes.trim() || undefined
+			});
 		} finally {
 			isSubmitting = false;
 		}
@@ -89,12 +119,12 @@
 </script>
 
 {#if bill}
-	<Modal bind:isOpen onClose={onCancel} title="Confirm Payment">
+	<Modal bind:isOpen onClose={onCancel} title={isEditing ? 'Edit Payment' : 'Confirm Payment'}>
 		<form onsubmit={handleSubmit} class="space-y-4">
 			<div>
 				{#if availableCycles.length > 0}
 					<label for="paymentCycle" class="block text-sm font-medium text-gray-700 mb-1">
-						Apply To Cycle <span class="text-red-500">*</span>
+						{isEditing ? 'Payment Cycle' : 'Apply To Cycle'} <span class="text-red-500">*</span>
 					</label>
 					<select
 						id="paymentCycle"
@@ -112,7 +142,11 @@
 				{/if}
 
 				<p class="text-sm text-gray-600 mb-4">
-					You're marking <span class="font-semibold text-gray-900">{bill.name}</span> as paid.
+					{#if isEditing}
+						Update the recorded payment for <span class="font-semibold text-gray-900">{bill.name}</span>.
+					{:else}
+						You're marking <span class="font-semibold text-gray-900">{bill.name}</span> as paid.
+					{/if}
 				</p>
 
 				<label for="paymentAmount" class="block text-sm font-medium text-gray-700 mb-1">
@@ -151,6 +185,19 @@
 				/>
 			</div>
 
+			<div>
+				<label for="paymentNotes" class="block text-sm font-medium text-gray-700 mb-1">
+					Notes
+				</label>
+				<textarea
+					id="paymentNotes"
+					bind:value={notes}
+					rows="3"
+					class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+					placeholder="Optional note about this payment"
+				></textarea>
+			</div>
+
 			<!-- Actions -->
 			<div class="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
 				<Button
@@ -167,7 +214,11 @@
 					size="md"
 					disabled={isSubmitting}
 				>
-					{isSubmitting ? 'Confirming...' : 'Confirm Payment'}
+					{#if isSubmitting}
+						{isEditing ? 'Saving...' : 'Confirming...'}
+					{:else}
+						{isEditing ? 'Save Payment' : 'Confirm Payment'}
+					{/if}
 				</Button>
 			</div>
 		</form>

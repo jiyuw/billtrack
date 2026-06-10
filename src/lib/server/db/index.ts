@@ -96,6 +96,8 @@ function initializeDatabase() {
 	const hasRecurrenceUnit = billColumns.some(col => col.name === 'recurrence_unit');
 	const hasPaymentMethodId = billColumns.some(col => col.name === 'payment_method_id');
 	const hasAssetTagId = billColumns.some(col => col.name === 'asset_tag_id');
+	const hasCycleStartDate = billColumns.some(col => col.name === 'cycle_start_date');
+	const hasCycleEndDate = billColumns.some(col => col.name === 'cycle_end_date');
 
 	if (!hasAutopay) {
 		sqlite.exec('ALTER TABLE bills ADD COLUMN is_autopay INTEGER NOT NULL DEFAULT 0');
@@ -125,6 +127,24 @@ function initializeDatabase() {
 	if (!hasAssetTagId) {
 		sqlite.exec('ALTER TABLE bills ADD COLUMN asset_tag_id INTEGER');
 		console.log('Added asset_tag_id column to bills table');
+	}
+
+	if (!hasCycleStartDate) {
+		sqlite.exec('ALTER TABLE bills ADD COLUMN cycle_start_date INTEGER');
+		console.log('Added cycle_start_date column to bills table');
+	}
+
+	if (!hasCycleEndDate) {
+		sqlite.exec('ALTER TABLE bills ADD COLUMN cycle_end_date INTEGER');
+		console.log('Added cycle_end_date column to bills table');
+	}
+
+	const billCycleColumns = sqlite.prepare("PRAGMA table_info(bill_cycles)").all() as Array<{ name: string }>;
+	const hasBillCycleDueDate = billCycleColumns.some((col) => col.name === 'due_date');
+
+	if (!hasBillCycleDueDate) {
+		sqlite.exec('ALTER TABLE bill_cycles ADD COLUMN due_date INTEGER');
+		console.log('Added due_date column to bill_cycles table');
 	}
 
 	const categoriesTableExists = sqlite
@@ -270,6 +290,29 @@ function initializeDatabase() {
 		`);
 	} catch (error) {
 		console.error('Migration error while backfilling recurrence fields:', error);
+	}
+
+	try {
+		sqlite.exec(`
+			UPDATE bills
+			SET cycle_start_date = CASE
+				WHEN created_at <= due_date THEN created_at
+				ELSE due_date
+			END
+			WHERE cycle_start_date IS NULL
+		`);
+		sqlite.exec(`
+			UPDATE bills
+			SET cycle_end_date = due_date
+			WHERE cycle_end_date IS NULL
+		`);
+		sqlite.exec(`
+			UPDATE bill_cycles
+			SET due_date = end_date
+			WHERE due_date IS NULL
+		`);
+	} catch (error) {
+		console.error('Migration error while backfilling cycle dates:', error);
 	}
 
 	// Check if analytics columns exist in user_preferences table

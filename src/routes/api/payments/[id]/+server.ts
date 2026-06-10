@@ -16,6 +16,9 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 				boundary: 'start'
 			});
 		}
+		if (data.cycleId !== undefined && data.cycleId !== null) {
+			updateData.cycleId = parseInt(data.cycleId);
+		}
 		if (data.notes !== undefined) updateData.notes = data.notes;
 
 		const payment = await updatePayment(id, updateData);
@@ -43,6 +46,9 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 				kind: 'date',
 				boundary: 'start'
 			});
+		}
+		if (data.cycleId !== undefined && data.cycleId !== null) {
+			updateData.cycleId = parseInt(data.cycleId);
 		}
 		if (data.notes !== undefined) updateData.notes = data.notes;
 

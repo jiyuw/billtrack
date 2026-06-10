@@ -22,7 +22,7 @@ import { Home, Car, HelpCircle } from 'lucide-svelte';
 	const billWithCycle = $derived('currentCycle' in bill ? bill as BillWithCycle : null);
 	const currentCycle = $derived(billWithCycle?.currentCycle);
 	const focusCycle = $derived(billWithCycle?.focusCycle ?? billWithCycle?.currentCycle);
-	const focusDueDate = $derived(focusCycle?.endDate ?? bill.dueDate);
+	const focusDueDate = $derived(focusCycle?.dueDate ?? focusCycle?.endDate ?? bill.dueDate);
 	const usageStats = $derived(billWithCycle?.usageStats ?? null);
 	const hasCurrentPayments = $derived((focusCycle?.totalPaid ?? 0) > 0);
 	const isBillPaid = $derived.by(() => {

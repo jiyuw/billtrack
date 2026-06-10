@@ -21,7 +21,7 @@ export const load: PageServerLoad = async () => {
 
 function getDashboardStatsFromCycles(bills: any[]) {
 	const now = new Date();
-	const getDueDate = (bill: any) => endOfDay(bill.focusCycle?.endDate ?? bill.dueDate);
+	const getDueDate = (bill: any) => endOfDay(bill.focusCycle?.dueDate ?? bill.focusCycle?.endDate ?? bill.dueDate);
 	const isPaid = (bill: any) => {
 		const cycle = bill.focusCycle ?? bill.currentCycle;
 		if (!cycle) return false;

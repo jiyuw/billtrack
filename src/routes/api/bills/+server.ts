@@ -48,11 +48,27 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		let dueDate: Date;
+		let cycleStartDate: Date;
+		let cycleEndDate: Date;
 		try {
 			dueDate = normalizeDateForStorage(data.dueDate, { kind: 'date', boundary: 'end' });
+			cycleStartDate = data.cycleStartDate
+				? normalizeDateForStorage(data.cycleStartDate, { kind: 'date', boundary: 'start' })
+				: normalizeDateForStorage(data.dueDate, { kind: 'date', boundary: 'start' });
+			cycleEndDate = data.cycleEndDate
+				? normalizeDateForStorage(data.cycleEndDate, { kind: 'date', boundary: 'end' })
+				: dueDate;
 		} catch (error) {
 			console.error('Error parsing due date:', { dueDate: data.dueDate, error });
 			return json({ error: 'Invalid due date format. Expected YYYY-MM-DD' }, { status: 400 });
+		}
+
+		if (cycleStartDate.getTime() > cycleEndDate.getTime()) {
+			return json({ error: 'Cycle start date must be on or before cycle end date' }, { status: 400 });
+		}
+
+		if (dueDate.getTime() < cycleEndDate.getTime()) {
+			return json({ error: 'Cycle due date must be on or after the cycle end date' }, { status: 400 });
 		}
 
 		const parsedPaymentMethodId = data.paymentMethodId ? parseInt(data.paymentMethodId) : null;
@@ -62,13 +78,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			name: data.name,
 			amount: data.isVariable ? 0 : parseFloat(data.amount),
 			dueDate,
+			cycleStartDate,
+			cycleEndDate,
 			paymentLink: data.paymentLink || null,
 			categoryId: data.categoryId || null,
 			assetTagId: data.assetTagId ? parseInt(data.assetTagId) : null,
 			isRecurring: data.isRecurring || false,
 			recurrenceInterval: data.recurrenceInterval ? parseInt(data.recurrenceInterval) : null,
 			recurrenceUnit: data.recurrenceUnit || null,
-			recurrenceDay: data.recurrenceDay ? parseInt(data.recurrenceDay) : null,
+			recurrenceDay: data.isRecurring
+				? (data.recurrenceDay ? parseInt(data.recurrenceDay) : dueDate.getDate())
+				: null,
 			isPaid: data.isPaid || false,
 			isAutopay: data.isAutopay || false,
 			paymentMethodId: data.isAutopay ? normalizedPaymentMethodId : null,

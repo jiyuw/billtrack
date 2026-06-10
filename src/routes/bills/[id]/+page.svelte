@@ -33,6 +33,7 @@
 	import BillForm from '$lib/components/BillForm.svelte';
 	import PaymentModal from '$lib/components/PaymentModal.svelte';
 	import LineChart from '$lib/components/LineChart.svelte';
+	import type { BillPayment } from '$lib/server/db/schema';
 
 	let { data }: { data: PageData } = $props();
 
@@ -59,22 +60,19 @@
 	);
 
 	const chartRange = $derived.by(() => {
-		const cyclesSorted = [...cycles].sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-		const lastCycles = cyclesSorted.slice(-10);
+		const lastCycles = historyCycles;
 		const rangeStart = lastCycles[0]?.startDate ?? null;
-		const focusEnd = (focusCycle ?? currentCycle)?.endDate ?? null;
-		const rangeEnd = focusEnd ?? lastCycles[lastCycles.length - 1]?.endDate ?? null;
+		const rangeEnd =
+			lastCycles[lastCycles.length - 1]?.dueDate ??
+			lastCycles[lastCycles.length - 1]?.endDate ??
+			null;
 		return { lastCycles, rangeStart, rangeEnd };
 	});
 
 	const chartPoints = $derived.by(() => {
-		if (!chartRange.rangeStart || !chartRange.rangeEnd) return [];
-		return payments
-			.filter((payment) => payment.paymentDate >= chartRange.rangeStart && payment.paymentDate <= chartRange.rangeEnd)
-			.sort((a, b) => a.paymentDate.getTime() - b.paymentDate.getTime())
-			.map((payment) => ({
-				x: payment.paymentDate,
-				y: payment.amount
+		return historyCycles.map((cycle) => ({
+				x: cycle.dueDate ?? cycle.endDate,
+				y: cycle.totalPaid
 			}));
 	});
 
@@ -143,6 +141,7 @@
 
 	let showEditModal = $state(false);
 	let showPaymentModal = $state(false);
+	let editingPayment = $state<BillPayment | null>(null);
 
 	async function handleTogglePaid() {
 		if (!isCyclePaid) {
@@ -163,15 +162,27 @@
 		}
 	}
 
-	async function handleConfirmPayment(amount: number, paymentDate: string, cycleId: number | null) {
+	async function handleConfirmPayment(data: {
+		amount: number;
+		paymentDate: string;
+		cycleId: number | null;
+		notes?: string;
+	}) {
 		try {
 			const response = await fetch(`/api/bills/${bill.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ isPaid: true, paymentAmount: amount, paymentDate, paymentCycleId: cycleId })
+				body: JSON.stringify({
+					isPaid: true,
+					paymentAmount: data.amount,
+					paymentDate: data.paymentDate,
+					paymentCycleId: data.cycleId,
+					paymentNotes: data.notes
+				})
 			});
 			if (response.ok) {
 				showPaymentModal = false;
+				editingPayment = null;
 				await invalidateAll();
 			} else {
 				alert('Failed to record payment. Please try again.');
@@ -184,6 +195,40 @@
 
 	function handleCancelPayment() {
 		showPaymentModal = false;
+		editingPayment = null;
+	}
+
+	function handleEditPayment(payment: BillPayment) {
+		editingPayment = payment;
+		showPaymentModal = true;
+	}
+
+	async function handleUpdatePayment(data: {
+		amount: number;
+		paymentDate: string;
+		cycleId: number | null;
+		notes?: string;
+	}) {
+		if (!editingPayment) return;
+
+		try {
+			const response = await fetch(`/api/payments/${editingPayment.id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+
+			if (response.ok) {
+				showPaymentModal = false;
+				editingPayment = null;
+				await invalidateAll();
+			} else {
+				alert('Failed to update payment. Please try again.');
+			}
+		} catch (error) {
+			console.error('Error updating payment:', error);
+			alert('Failed to update payment. Please try again.');
+		}
 	}
 
 	async function handleDelete() {
@@ -236,15 +281,15 @@
 				<div class="flex flex-wrap items-center gap-3">
 					<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{bill.name}</h1>
 					<StatusIndicator
-						dueDate={(focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate}
+						dueDate={(focusCycle ?? bill.currentCycle)?.dueDate ?? (focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate}
 						isPaid={isCyclePaid}
 					/>
 				</div>
 				<p class="text-gray-600 dark:text-gray-400 mt-1">
 					{#if bill.isRecurring}
-						Recurring {getRecurrenceDescription(bill.recurrenceInterval ?? 1, bill.recurrenceUnit ?? 'month', bill.recurrenceDay)} • Due {format((focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate, 'MMM d, yyyy')}
+						Recurring {getRecurrenceDescription(bill.recurrenceInterval ?? 1, bill.recurrenceUnit ?? 'month', bill.recurrenceDay)} • Due {format((focusCycle ?? bill.currentCycle)?.dueDate ?? (focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate, 'MMM d, yyyy')}
 					{:else}
-						One-time bill • Due {format((focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate, 'MMM d, yyyy')}
+						One-time bill • Due {format((focusCycle ?? bill.currentCycle)?.dueDate ?? (focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate, 'MMM d, yyyy')}
 					{/if}
 				</p>
 				{#if bill.notes}
@@ -494,9 +539,18 @@
 										{/if}
 									</div>
 								</div>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
-									{format(payment.paymentDate, 'MMM d, yyyy')}
-								</p>
+								<div class="flex items-center gap-3">
+									<p class="text-sm text-gray-600 dark:text-gray-400">
+										{format(payment.paymentDate, 'MMM d, yyyy')}
+									</p>
+									<button
+										type="button"
+										onclick={() => handleEditPayment(payment)}
+										class="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
+									>
+										Edit
+									</button>
+								</div>
 							</div>
 						{/each}
 					</div>
@@ -592,16 +646,25 @@
 							<div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
 								<div class="space-y-1">
 									{#each paymentsByCycle[cycle.id] as payment}
-										<div class="flex items-center justify-between text-sm">
-											<span class="text-gray-600 dark:text-gray-400">
+										<div class="flex items-center justify-between gap-3 text-sm">
+											<span class="min-w-0 text-gray-600 dark:text-gray-400">
 												{format(payment.paymentDate, 'MMM d, yyyy')}
 												{#if payment.notes}
 													<span class="text-xs">• {payment.notes}</span>
 												{/if}
 											</span>
-											<span class="font-medium text-gray-900 dark:text-gray-100">
-												{formatCurrency(payment.amount)}
-											</span>
+											<div class="flex items-center gap-3 shrink-0">
+												<span class="font-medium text-gray-900 dark:text-gray-100">
+													{formatCurrency(payment.amount)}
+												</span>
+												<button
+													type="button"
+													onclick={() => handleEditPayment(payment)}
+													class="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
+												>
+													Edit
+												</button>
+											</div>
 										</div>
 									{/each}
 								</div>
@@ -628,7 +691,9 @@
 			initialData={{
 				name: bill.name,
 				amount: bill.amount,
-				dueDate: bill.dueDate,
+				dueDate: bill.focusCycle?.dueDate ?? bill.currentCycle?.dueDate ?? bill.dueDate,
+				cycleStartDate: bill.focusCycle?.startDate ?? bill.currentCycle?.startDate ?? bill.cycleStartDate ?? bill.dueDate,
+				cycleEndDate: bill.focusCycle?.endDate ?? bill.currentCycle?.endDate ?? bill.cycleEndDate ?? bill.dueDate,
 				paymentLink: bill.paymentLink || undefined,
 				categoryId: bill.categoryId,
 				assetTagId: bill.assetTagId ?? undefined,
@@ -644,6 +709,7 @@
 			onSubmit={handleUpdateBill}
 			onCancel={() => (showEditModal = false)}
 			submitLabel="Update Bill"
+			isEditing={true}
 		/>
 	</Modal>
 {/if}
@@ -654,6 +720,7 @@
 	bill={bill}
 	cycles={cycles}
 	focusCycleId={bill.focusCycle?.id ?? null}
-	onConfirm={handleConfirmPayment}
+	existingPayment={editingPayment}
+	onConfirm={editingPayment ? handleUpdatePayment : handleConfirmPayment}
 	onCancel={handleCancelPayment}
 />

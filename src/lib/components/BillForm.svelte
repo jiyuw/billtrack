@@ -14,6 +14,8 @@
 			name?: string;
 			amount?: number;
 			dueDate?: Date;
+			cycleStartDate?: Date;
+			cycleEndDate?: Date;
 			paymentLink?: string;
 			categoryId?: number | null;
 			assetTagId?: number | null;
@@ -29,6 +31,7 @@
 		onSubmit: (data: any) => Promise<void>;
 		onCancel: () => void;
 		submitLabel?: string;
+		isEditing?: boolean;
 	}
 
 	let {
@@ -38,41 +41,56 @@
 		initialData,
 		onSubmit,
 		onCancel,
-		submitLabel = 'Save Bill'
+		submitLabel = 'Save Bill',
+		isEditing = false
 	}: Props = $props();
 
 	let name = $state('');
 	let amount = $state(0);
 	let dueDate = $state(formatDateForInput(new Date()));
+	let cycleStartDate = $state(formatDateForInput(new Date()));
+	let cycleEndDate = $state(formatDateForInput(new Date()));
 	let paymentLink = $state('');
 	let categoryId = $state<number | null>(null);
 	let assetTagId = $state<number | null>(null);
 	let isRecurring = $state(false);
 	let recurrenceInterval = $state(1);
 	let recurrenceUnit = $state<RecurrenceUnit>('month');
-	let recurrenceDay = $state<number | null>(null);
 	let isAutopay = $state(false);
 	let paymentMethodId = $state<number | null>(null);
 	let isVariable = $state(false);
 	let notes = $state('');
 	let isSubmitting = $state(false);
+	let rebuildScope = $state<'future' | 'all'>('future');
+	let rebuildFromCycleStartDate = $state(formatDateForInput(new Date()));
 
-	// Reset form when initialData changes
 	$effect(() => {
+		const initialDueDate = initialData?.dueDate ?? new Date();
+		const initialCycleStartDate = initialData?.cycleStartDate ?? initialDueDate;
+		const initialCycleEndDate = initialData?.cycleEndDate ?? initialDueDate;
+
 		name = initialData?.name || '';
 		amount = initialData?.amount || 0;
-		dueDate = initialData?.dueDate ? formatDateForInput(initialData.dueDate) : formatDateForInput(new Date());
+		dueDate = formatDateForInput(initialDueDate);
+		cycleStartDate = formatDateForInput(initialCycleStartDate);
+		cycleEndDate = formatDateForInput(initialCycleEndDate);
+		rebuildFromCycleStartDate = formatDateForInput(initialCycleStartDate);
 		paymentLink = initialData?.paymentLink || '';
 		categoryId = initialData?.categoryId || null;
 		assetTagId = initialData?.assetTagId || null;
 		isRecurring = initialData?.isRecurring || false;
 		recurrenceInterval = initialData?.recurrenceInterval || 1;
 		recurrenceUnit = initialData?.recurrenceUnit || 'month';
-		recurrenceDay = initialData?.recurrenceDay || null;
 		isAutopay = initialData?.isAutopay || false;
 		paymentMethodId = initialData?.paymentMethodId ?? null;
 		isVariable = initialData?.isVariable || false;
 		notes = initialData?.notes || '';
+	});
+
+	$effect(() => {
+		if (!isRecurring) {
+			isVariable = false;
+		}
 	});
 
 	async function handleSubmit(e: Event) {
@@ -80,267 +98,411 @@
 		isSubmitting = true;
 
 		try {
+			const effectiveCycleStartDate = isRecurring ? cycleStartDate : dueDate;
+			const effectiveCycleEndDate = isRecurring ? cycleEndDate : dueDate;
+
 			await onSubmit({
 				name,
-				amount: isVariable ? 0 : parseFloat(amount.toString()),
+				amount: isRecurring && isVariable ? 0 : parseFloat(amount.toString()),
 				dueDate,
+				cycleStartDate: effectiveCycleStartDate,
+				cycleEndDate: effectiveCycleEndDate,
 				paymentLink: paymentLink || null,
 				categoryId,
 				assetTagId,
 				isRecurring,
 				recurrenceInterval: isRecurring ? recurrenceInterval : null,
 				recurrenceUnit: isRecurring ? recurrenceUnit : null,
-				recurrenceDay: isRecurring && (recurrenceUnit === 'month' || recurrenceUnit === 'year')
-					? (recurrenceDay ?? Number(dueDate.split('-')[2]))
-					: null,
+				recurrenceDay: isRecurring ? Number(dueDate.split('-')[2]) : null,
 				isAutopay,
 				paymentMethodId: isAutopay ? paymentMethodId : null,
-				isVariable,
-				notes: notes || null
+				isVariable: isRecurring ? isVariable : false,
+				notes: notes || null,
+				rebuildScope: isEditing ? rebuildScope : undefined,
+				rebuildFromCycleStartDate: isEditing ? rebuildFromCycleStartDate : undefined
 			});
 		} finally {
 			isSubmitting = false;
 		}
 	}
+
+	const sectionClass =
+		'rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800/80';
+	const fieldClass =
+		'mt-1 block w-full rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+	const cycleSettingsChanged = $derived.by(() => {
+		if (!isEditing || !isRecurring) return false;
+
+		const initialDueDate = formatDateForInput(initialData?.dueDate ?? new Date());
+		const initialCycleStartDate = formatDateForInput(initialData?.cycleStartDate ?? initialData?.dueDate ?? new Date());
+		const initialCycleEndDate = formatDateForInput(initialData?.cycleEndDate ?? initialData?.dueDate ?? new Date());
+		const initialIsRecurring = initialData?.isRecurring ?? false;
+		const initialRecurrenceInterval = initialData?.recurrenceInterval ?? 1;
+		const initialRecurrenceUnit = initialData?.recurrenceUnit ?? 'month';
+
+		return (
+			isRecurring !== initialIsRecurring ||
+			dueDate !== initialDueDate ||
+			cycleStartDate !== initialCycleStartDate ||
+			cycleEndDate !== initialCycleEndDate ||
+			recurrenceInterval !== initialRecurrenceInterval ||
+			recurrenceUnit !== initialRecurrenceUnit
+		);
+	});
 </script>
 
-<form onsubmit={handleSubmit} class="space-y-6">
-	<!-- Bill Name -->
-	<div>
-		<label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-			Bill Name <span class="text-red-500 dark:text-red-400">*</span>
-		</label>
-		<input
-			type="text"
-			id="name"
-			bind:value={name}
-			required
-			class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
-			placeholder="e.g., Electric Bill"
-		/>
-	</div>
-
-	<!-- Amount -->
-	<div>
-		<label for="amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-			Amount <span class="text-red-500 dark:text-red-400">*</span>
-		</label>
-		<div class="relative mt-1">
-			<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-				<span class="text-gray-500 dark:text-gray-400">$</span>
-			</div>
-			<input
-				type="number"
-				id="amount"
-				bind:value={amount}
-				required={!isVariable}
-				disabled={isVariable}
-				min="0"
-				step="0.01"
-				class="block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 pl-7 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500 dark:disabled:bg-gray-800"
-				placeholder="0.00"
-			/>
-		</div>
-		{#if isVariable}
-			<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-				Variable bills use past payments to show usage stats.
+<form onsubmit={handleSubmit} class="space-y-5">
+	<section class={sectionClass}>
+		<div class="mb-4">
+			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Basic Information</h3>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				Name the bill and add the reference details you want to keep with it.
 			</p>
-		{/if}
-	</div>
-
-	<!-- Variable Amount -->
-	<div class="flex items-center">
-		<input
-			type="checkbox"
-			id="isVariable"
-			bind:checked={isVariable}
-			class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
-		/>
-		<label for="isVariable" class="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-			This bill has a variable amount (usage-based)
-		</label>
-	</div>
-
-	<!-- Due Date -->
-	<div>
-		<label for="dueDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-			Due Date <span class="text-red-500 dark:text-red-400">*</span>
-		</label>
-		<input
-			type="date"
-			id="dueDate"
-			bind:value={dueDate}
-			required
-			class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-		/>
-	</div>
-
-	<!-- Payment Link -->
-	<div>
-		<label for="paymentLink" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-			Payment Link (Optional)
-		</label>
-		<input
-			type="url"
-			id="paymentLink"
-			bind:value={paymentLink}
-			class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
-			placeholder="https://example.com/pay"
-		/>
-	</div>
-
-	<!-- Category -->
-	<div>
-		<label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
-		<select
-			id="category"
-			bind:value={categoryId}
-			class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-		>
-			<option value={null}>No Category</option>
-			{#each categories as category}
-				<option value={category.id}>{category.name}</option>
-			{/each}
-		</select>
-	</div>
-
-	<!-- Asset Tag -->
-	<div>
-		<label for="assetTag" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset Tag</label>
-		<select
-			id="assetTag"
-			bind:value={assetTagId}
-			class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-		>
-			<option value={null}>No Asset Tag</option>
-			{#each assetTags as tag}
-				<option value={tag.id}>{tag.name}</option>
-			{/each}
-		</select>
-	</div>
-
-	<!-- Autopay -->
-	<div class="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-		<div class="flex items-center">
-			<input
-				type="checkbox"
-				id="isAutopay"
-				bind:checked={isAutopay}
-				class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
-			/>
-			<label for="isAutopay" class="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-				This bill is set to autopay
-			</label>
 		</div>
 
-		{#if isAutopay}
-			<div>
-				<label for="paymentMethodId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-					Payment Method
+		<div class="grid gap-4 md:grid-cols-2">
+			<div class="md:col-span-2">
+				<label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+					Bill Name <span class="text-red-500 dark:text-red-400">*</span>
 				</label>
-				<select
-					id="paymentMethodId"
-					bind:value={paymentMethodId}
+				<input
+					type="text"
+					id="name"
+					bind:value={name}
 					required
-					class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-				>
-					<option value={null}>Select a payment method</option>
-					{#each paymentMethods as method}
-						<option value={method.id}>
-							{method.nickname} •••• {method.lastFour}
-						</option>
+					class={fieldClass}
+					placeholder="e.g., Electric Bill"
+				/>
+			</div>
+
+			<div class="md:col-span-2">
+				<label for="paymentLink" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+					Payment Link
+				</label>
+				<input
+					type="url"
+					id="paymentLink"
+					bind:value={paymentLink}
+					class={fieldClass}
+					placeholder="https://example.com/pay"
+				/>
+			</div>
+
+			<div>
+				<label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+				<select id="category" bind:value={categoryId} class={fieldClass}>
+					<option value={null}>No Category</option>
+					{#each categories as category}
+						<option value={category.id}>{category.name}</option>
 					{/each}
 				</select>
-				{#if paymentMethods.length === 0}
-					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-						Add a payment method in Settings to use autopay.
-					</p>
-				{/if}
 			</div>
-		{/if}
-	</div>
 
-	<!-- Recurring -->
-	<div class="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-		<div class="flex items-center">
-			<input
-				type="checkbox"
-				id="isRecurring"
-				bind:checked={isRecurring}
-				class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
-			/>
-			<label for="isRecurring" class="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-				This is a recurring bill
-			</label>
+			<div>
+				<label for="assetTag" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset Tag</label>
+				<select id="assetTag" bind:value={assetTagId} class={fieldClass}>
+					<option value={null}>No Asset Tag</option>
+					{#each assetTags as tag}
+						<option value={tag.id}>{tag.name}</option>
+					{/each}
+				</select>
+			</div>
+
+			<div class="md:col-span-2">
+				<label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+				<textarea
+					id="notes"
+					bind:value={notes}
+					rows="4"
+					class={fieldClass}
+					placeholder="Any extra billing or account details..."
+				></textarea>
+			</div>
+		</div>
+	</section>
+
+	<section class={sectionClass}>
+		<div class="mb-4">
+			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Billing Information</h3>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				Define the billing cadence, the current bill amount, and the latest known cycle window.
+			</p>
 		</div>
 
-		{#if isRecurring}
-			<div class="space-y-4">
-				<div>
+		<div class="space-y-4">
+			<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+				<label class="flex items-start gap-3">
+					<input
+						type="checkbox"
+						id="isRecurring"
+						bind:checked={isRecurring}
+						class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+					/>
+					<span>
+						<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Recurring bill</span>
+						<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
+							Use this when the bill repeats on a regular schedule.
+						</span>
+					</span>
+				</label>
+
+				{#if isRecurring}
+					<div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
 						<label for="recurrenceInterval" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Frequency
+							Recurrence
 						</label>
-					<div class="mt-1 flex items-center gap-2">
-						<span class="text-sm text-gray-600 dark:text-gray-400">Every</span>
-						<input
+						<div class="mt-1 grid gap-2 sm:grid-cols-[auto_6rem_minmax(0,12rem)] sm:items-center">
+							<span class="text-sm text-gray-600 dark:text-gray-400">Every</span>
+							<input
 								type="number"
 								id="recurrenceInterval"
 								min="1"
+								step="1"
 								bind:value={recurrenceInterval}
-							step="1"
-							class="w-20 rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-						/>
-						<select
-							bind:value={recurrenceUnit}
-							class="min-w-[140px] rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-						>
-							<option value="day">Day(s)</option>
-							<option value="week">Week(s)</option>
-							<option value="month">Month(s)</option>
-							<option value="year">Year(s)</option>
-						</select>
-					</div>
-				</div>
-
-				{#if recurrenceUnit === 'month' || recurrenceUnit === 'year'}
-					<div>
-						<label for="recurrenceDay" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Day of Month
-						</label>
-						<input
-							type="number"
-							id="recurrenceDay"
-							bind:value={recurrenceDay}
-							min="1"
-							max="31"
-							class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
-							placeholder="e.g., 1 for 1st of month"
-						/>
-						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-							Leave empty to use the same day as the initial due date
-						</p>
+								class="rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+							/>
+							<select
+								bind:value={recurrenceUnit}
+								class="rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+							>
+								<option value="day">Day(s)</option>
+								<option value="week">Week(s)</option>
+								<option value="month">Month(s)</option>
+								<option value="year">Year(s)</option>
+							</select>
+						</div>
 					</div>
 				{/if}
 			</div>
-		{/if}
-	</div>
 
-	<!-- Notes -->
-	<div>
-		<label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-			Notes (Optional)
-		</label>
-		<textarea
-			id="notes"
-			bind:value={notes}
-			rows="3"
-			class="mt-1 block w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500"
-			placeholder="Any additional information..."
-		></textarea>
-	</div>
+			{#if isRecurring}
+				<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+					<label class="flex items-start gap-3">
+						<input
+							type="checkbox"
+							id="isVariable"
+							bind:checked={isVariable}
+							class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+						/>
+						<span>
+							<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Variable amount</span>
+							<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
+								Use this when the amount changes each cycle.
+							</span>
+						</span>
+					</label>
 
-	<!-- Actions -->
-	<div class="flex items-center justify-end gap-3 border-t border-gray-200 pt-6 dark:border-gray-700">
+					<div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+						<label for="amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Amount {#if !isVariable}<span class="text-red-500 dark:text-red-400">*</span>{/if}
+						</label>
+						<div class="relative mt-1">
+							<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+								<span class="text-gray-500 dark:text-gray-400">$</span>
+							</div>
+							<input
+								type="number"
+								id="amount"
+								bind:value={amount}
+								required={!isVariable}
+								disabled={isVariable}
+								min="0"
+								step="0.01"
+								class={`${fieldClass} pl-7 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800`}
+								placeholder="0.00"
+							/>
+						</div>
+						{#if isVariable}
+							<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+								Variable bills rely on payment history for the real amount.
+							</p>
+						{/if}
+					</div>
+				</div>
+
+				<div class="grid gap-4 md:grid-cols-3">
+					<div>
+						<label for="cycleStartDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Most Recent Cycle Start <span class="text-red-500 dark:text-red-400">*</span>
+						</label>
+						<input
+							type="date"
+							id="cycleStartDate"
+							bind:value={cycleStartDate}
+							required={isRecurring}
+							class={fieldClass}
+						/>
+					</div>
+
+					<div>
+						<label for="cycleEndDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Most Recent Cycle End <span class="text-red-500 dark:text-red-400">*</span>
+						</label>
+						<input
+							type="date"
+							id="cycleEndDate"
+							bind:value={cycleEndDate}
+							required={isRecurring}
+							class={fieldClass}
+						/>
+					</div>
+
+					<div>
+						<label for="dueDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							This Cycle Due Date <span class="text-red-500 dark:text-red-400">*</span>
+						</label>
+						<input
+							type="date"
+							id="dueDate"
+							bind:value={dueDate}
+							required
+							class={fieldClass}
+						/>
+						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+							Use the due date for the same cycle window above.
+						</p>
+					</div>
+				</div>
+			{:else}
+				<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+					<div class="grid gap-4 md:grid-cols-2">
+						<div>
+							<label for="amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+								Amount <span class="text-red-500 dark:text-red-400">*</span>
+							</label>
+							<div class="relative mt-1">
+								<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+									<span class="text-gray-500 dark:text-gray-400">$</span>
+								</div>
+								<input
+									type="number"
+									id="amount"
+									bind:value={amount}
+									required
+									min="0"
+									step="0.01"
+									class={`${fieldClass} pl-7`}
+									placeholder="0.00"
+								/>
+							</div>
+						</div>
+
+						<div>
+							<label for="dueDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+								Due Date <span class="text-red-500 dark:text-red-400">*</span>
+							</label>
+							<input
+								type="date"
+								id="dueDate"
+								bind:value={dueDate}
+								required
+								class={fieldClass}
+							/>
+						</div>
+					</div>
+				</div>
+			{/if}
+
+			{#if isEditing && isRecurring && cycleSettingsChanged}
+				<div class="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200 dark:border-amber-700 dark:bg-amber-950/40 dark:ring-amber-900">
+					<p class="text-sm font-medium text-amber-900 dark:text-amber-100">Cycle Recalculation</p>
+					<p class="mt-1 text-sm text-amber-800 dark:text-amber-200">
+						Choose whether this schedule change should affect only this cycle forward, or also rewrite historical cycles.
+					</p>
+					<div class="mt-3 space-y-3">
+						<label class="flex items-start gap-3">
+							<input
+								type="radio"
+								name="rebuildScope"
+								value="future"
+								bind:group={rebuildScope}
+								class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+							/>
+							<span>
+								<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">
+									Recalculate this cycle and future cycles
+								</span>
+								<span class="mt-1 block text-sm text-gray-600 dark:text-gray-400">
+									Keep older cycle history as-is and only update the selected cycle forward.
+								</span>
+							</span>
+						</label>
+						<label class="flex items-start gap-3">
+							<input
+								type="radio"
+								name="rebuildScope"
+								value="all"
+								bind:group={rebuildScope}
+								class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+							/>
+							<span>
+								<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">
+									Recalculate all cycles, including history
+								</span>
+								<span class="mt-1 block text-sm text-gray-600 dark:text-gray-400">
+									Use this when the whole billing timeline changed and historical cycles should match the new schedule.
+								</span>
+							</span>
+						</label>
+					</div>
+				</div>
+			{/if}
+		</div>
+	</section>
+
+	<section class={sectionClass}>
+		<div class="mb-4">
+			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Payment Information</h3>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				Track whether this bill is on autopay and which payment method it uses.
+			</p>
+		</div>
+
+		<div class="space-y-4">
+			<label class="flex items-start gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+				<input
+					type="checkbox"
+					id="isAutopay"
+					bind:checked={isAutopay}
+					class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+				/>
+				<span>
+					<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Autopay enabled</span>
+					<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
+						Attach a payment method if this bill is automatically paid.
+					</span>
+				</span>
+			</label>
+
+			{#if isAutopay}
+				<div>
+					<label for="paymentMethodId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						Payment Method
+					</label>
+					<select
+						id="paymentMethodId"
+						bind:value={paymentMethodId}
+						required
+						class={fieldClass}
+					>
+						<option value={null}>Select a payment method</option>
+						{#each paymentMethods as method}
+							<option value={method.id}>
+								{method.nickname} •••• {method.lastFour}
+							</option>
+						{/each}
+					</select>
+					{#if paymentMethods.length === 0}
+						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+							Add a payment method in Settings to use autopay.
+						</p>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	</section>
+
+	<div class="flex justify-end gap-3 pt-2">
 		<Button variant="secondary" onclick={onCancel} disabled={isSubmitting}>
 			Cancel
 		</Button>

@@ -64,6 +64,8 @@ export interface BillFormData {
 	name: string;
 	amount: number;
 	dueDate: Date;
+	cycleStartDate?: Date;
+	cycleEndDate?: Date;
 	paymentLink?: string;
 	categoryId?: number | null;
 	assetTagId?: number | null;

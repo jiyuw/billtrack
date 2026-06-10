@@ -52,7 +52,13 @@ import { endOfDay } from 'date-fns';
 			const now = new Date();
 			bills = bills.filter((bill) => {
 				const paid = isBillPaid(bill);
-				const dueAt = endOfDay(bill.dueDate);
+				const cycleBill = ('focusCycle' in bill ? bill as BillWithCycle : null);
+				const dueAt = endOfDay(
+					(cycleBill
+						? (cycleBill.focusCycle ?? cycleBill.currentCycle)?.dueDate ??
+							(cycleBill.focusCycle ?? cycleBill.currentCycle)?.endDate
+						: null) ?? bill.dueDate
+				);
 				if (filterStatus === 'paid') return paid;
 				if (filterStatus === 'unpaid') return !paid;
 				if (filterStatus === 'overdue') return !paid && dueAt <= now;
@@ -133,14 +139,25 @@ import { endOfDay } from 'date-fns';
 		}
 	}
 
-	async function handleConfirmPayment(amount: number, paymentDate: string, cycleId: number | null) {
+	async function handleConfirmPayment(data: {
+		amount: number;
+		paymentDate: string;
+		cycleId: number | null;
+		notes?: string;
+	}) {
 		if (payingBillId === null) return;
 
 		try {
 			const response = await fetch(`/api/bills/${payingBillId}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ isPaid: true, paymentAmount: amount, paymentDate, paymentCycleId: cycleId })
+				body: JSON.stringify({
+					isPaid: true,
+					paymentAmount: data.amount,
+					paymentDate: data.paymentDate,
+					paymentCycleId: data.cycleId,
+					paymentNotes: data.notes
+				})
 			});
 
 			if (response.ok) {
@@ -563,7 +580,9 @@ import { endOfDay } from 'date-fns';
 			initialData={{
 				name: editingBill.name,
 				amount: editingBill.amount,
-				dueDate: editingBill.dueDate,
+				dueDate: editingBill.focusCycle?.dueDate ?? editingBill.currentCycle?.dueDate ?? editingBill.dueDate,
+				cycleStartDate: editingBill.focusCycle?.startDate ?? editingBill.currentCycle?.startDate ?? editingBill.cycleStartDate ?? editingBill.dueDate,
+				cycleEndDate: editingBill.focusCycle?.endDate ?? editingBill.currentCycle?.endDate ?? editingBill.cycleEndDate ?? editingBill.dueDate,
 				paymentLink: editingBill.paymentLink || undefined,
 				categoryId: editingBill.categoryId,
 				assetTagId: editingBill.assetTagId ?? undefined,
@@ -579,6 +598,7 @@ import { endOfDay } from 'date-fns';
 			onSubmit={handleUpdateBill}
 			onCancel={handleCloseEditModal}
 			submitLabel="Update Bill"
+			isEditing={true}
 		/>
 	</Modal>
 {/if}
