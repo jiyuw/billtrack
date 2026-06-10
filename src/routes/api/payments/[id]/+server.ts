@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updatePayment, deletePayment } from '$lib/server/db/bill-queries';
+import { normalizeDateForStorage } from '$lib/utils/dates';
 
 export const PUT: RequestHandler = async ({ params, request }) => {
 	try {
@@ -9,7 +10,12 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 
 		const updateData: any = {};
 		if (data.amount !== undefined) updateData.amount = parseFloat(data.amount);
-		if (data.paymentDate) updateData.paymentDate = new Date(data.paymentDate);
+		if (data.paymentDate) {
+			updateData.paymentDate = normalizeDateForStorage(data.paymentDate, {
+				kind: 'date',
+				boundary: 'start'
+			});
+		}
 		if (data.notes !== undefined) updateData.notes = data.notes;
 
 		const payment = await updatePayment(id, updateData);
@@ -32,7 +38,12 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 
 		const updateData: any = {};
 		if (data.amount !== undefined) updateData.amount = parseFloat(data.amount);
-		if (data.paymentDate) updateData.paymentDate = new Date(data.paymentDate);
+		if (data.paymentDate) {
+			updateData.paymentDate = normalizeDateForStorage(data.paymentDate, {
+				kind: 'date',
+				boundary: 'start'
+			});
+		}
 		if (data.notes !== undefined) updateData.notes = data.notes;
 
 		const payment = await updatePayment(id, updateData);

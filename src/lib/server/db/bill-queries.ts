@@ -193,11 +193,13 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 		if (bill.isRecurring && bill.recurrenceUnit && bill.recurrenceInterval) {
 			startFrom = bill.dueDate;
 		} else {
+			const cycleDates = calculateBillCycleDates(bill);
+
 			// Create single cycle for non-recurring bill
 			await db.insert(billCycles).values({
 				billId: bill.id,
-				startDate: bill.createdAt,
-				endDate: endOfDay(bill.dueDate),
+				startDate: cycleDates.startDate,
+				endDate: cycleDates.endDate,
 				expectedAmount: bill.amount,
 				totalPaid: 0,
 				isPaid: bill.isPaid

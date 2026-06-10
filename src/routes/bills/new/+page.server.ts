@@ -2,7 +2,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { getAllCategories, createBill, getAllPaymentMethods, getAllAssetTags } from '$lib/server/db/queries';
 import { redirect } from '@sveltejs/kit';
 import type { NewBill } from '$lib/server/db/schema';
-import { parseLocalDate } from '$lib/utils/dates';
+import { normalizeDateForStorage } from '$lib/utils/dates';
 
 export const load: PageServerLoad = async () => {
 	const categories = getAllCategories();
@@ -19,7 +19,7 @@ export const actions: Actions = {
 		// Parse and validate due date
 		let dueDate: Date;
 		try {
-			dueDate = parseLocalDate(data.dueDate as string);
+			dueDate = normalizeDateForStorage(data.dueDate as string, { kind: 'date', boundary: 'end' });
 		} catch (error) {
 			console.error('Error parsing due date:', { dueDate: data.dueDate, error });
 			// Fallback to current date if parsing fails

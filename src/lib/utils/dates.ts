@@ -2,6 +2,8 @@
  * Date utility functions to handle timezone-safe date operations
  */
 
+import { endOfDay, format, isValid, startOfDay } from 'date-fns';
+
 /**
  * Parses a date-only string (YYYY-MM-DD) as local midnight instead of UTC midnight.
  * This prevents off-by-one day errors when working with date inputs.
@@ -49,6 +51,66 @@ export function parseLocalDate(dateString: string): Date {
 }
 
 /**
+ * Parses a datetime-local value (YYYY-MM-DDTHH:mm) as a local Date.
+ */
+export function parseLocalDateTime(dateTimeString: string): Date {
+	if (!dateTimeString || typeof dateTimeString !== 'string') {
+		throw new Error(`Invalid datetime string: expected non-empty string, got ${typeof dateTimeString}`);
+	}
+
+	const trimmed = dateTimeString.trim();
+	if (trimmed === '') {
+		throw new Error('Invalid datetime string: empty string');
+	}
+
+	const [datePart, timePart] = trimmed.split('T');
+	if (!datePart || !timePart) {
+		throw new Error(`Invalid datetime format: expected YYYY-MM-DDTHH:mm, got "${trimmed}"`);
+	}
+
+	const baseDate = parseLocalDate(datePart);
+	const [hours, minutes] = timePart.split(':').map(Number);
+
+	if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+		throw new Error(`Invalid time components: hour=${hours}, minute=${minutes}`);
+	}
+
+	baseDate.setHours(hours, minutes, 0, 0);
+
+	if (!isValid(baseDate)) {
+		throw new Error(`Invalid datetime: ${trimmed} resulted in Invalid Date`);
+	}
+
+	return baseDate;
+}
+
+/**
+ * Converts mixed incoming date values into a Date for storage.
+ * Date-only values are normalized in local time before being stored as UTC instants.
+ */
+export function normalizeDateForStorage(
+	value: Date | string,
+	options: { kind: 'date'; boundary?: 'start' | 'end' } | { kind: 'datetime' }
+): Date {
+	const date =
+		value instanceof Date
+			? new Date(value.getTime())
+			: options.kind === 'datetime'
+				? parseLocalDateTime(value)
+				: parseLocalDate(value);
+
+	if (!isValid(date)) {
+		throw new Error('Invalid date value for storage');
+	}
+
+	if (options.kind === 'datetime') {
+		return date;
+	}
+
+	return options.boundary === 'end' ? endOfDay(date) : startOfDay(date);
+}
+
+/**
  * Formats a Date object to YYYY-MM-DD in local time.
  * This is safer than using .toISOString().split('T')[0] which uses UTC.
  *
@@ -63,4 +125,11 @@ export function formatDateForInput(date: Date): string {
 	const month = String(date.getMonth() + 1).padStart(2, '0');
 	const day = String(date.getDate()).padStart(2, '0');
 	return `${year}-${month}-${day}`;
+}
+
+/**
+ * Formats a Date for use in a datetime-local input using the current device timezone.
+ */
+export function formatDateTimeForInput(date: Date): string {
+	return format(date, "yyyy-MM-dd'T'HH:mm");
 }
