@@ -12,6 +12,17 @@ import {
 	isWithinInterval
 } from 'date-fns';
 
+function getSingleCycleDates(bill: Bill): { startDate: Date; endDate: Date } {
+	const dueDayStart = startOfDay(bill.dueDate);
+	const createdDayStart = startOfDay(bill.createdAt);
+	const endDate = endOfDay(bill.dueDate);
+
+	return {
+		startDate: isAfter(createdDayStart, dueDayStart) ? dueDayStart : createdDayStart,
+		endDate
+	};
+}
+
 /**
  * Calculate the cycle dates for a bill based on recurrence pattern and due date
  * For non-recurring bills, creates a single cycle from creation to due date
@@ -22,10 +33,7 @@ export function calculateBillCycleDates(
 ): { startDate: Date; endDate: Date } {
 	// For non-recurring bills, create a single cycle
 	if (!bill.isRecurring || !bill.recurrenceUnit || !bill.recurrenceInterval) {
-		return {
-			startDate: startOfDay(bill.createdAt),
-			endDate: endOfDay(bill.dueDate)
-		};
+		return getSingleCycleDates(bill);
 	}
 
 	const dueDate = startOfDay(bill.dueDate);
@@ -129,10 +137,7 @@ export function generateBillCyclesBetween(
 ): Array<{ startDate: Date; endDate: Date }> {
 	// For non-recurring bills, return single cycle
 	if (!bill.isRecurring || !bill.recurrenceUnit || !bill.recurrenceInterval) {
-		return [{
-			startDate: startOfDay(bill.createdAt),
-			endDate: endOfDay(bill.dueDate)
-		}];
+		return [getSingleCycleDates(bill)];
 	}
 
 	const cycles: Array<{ startDate: Date; endDate: Date }> = [];

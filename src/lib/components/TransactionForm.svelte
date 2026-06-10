@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { format } from 'date-fns';
 	import Button from '$lib/components/Button.svelte';
+	import { formatDateTimeForInput, normalizeDateForStorage } from '$lib/utils/dates';
 
 	interface Props {
 		initialData?: {
@@ -22,7 +22,7 @@
 	}: Props = $props();
 
 	let amount = $state(0);
-	let timestamp = $state(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+	let timestamp = $state(formatDateTimeForInput(new Date()));
 	let vendor = $state('');
 	let notes = $state('');
 	let isSubmitting = $state(false);
@@ -31,8 +31,8 @@
 	$effect(() => {
 		amount = initialData?.amount || 0;
 		timestamp = initialData?.timestamp
-			? format(initialData.timestamp, "yyyy-MM-dd'T'HH:mm")
-			: format(new Date(), "yyyy-MM-dd'T'HH:mm");
+			? formatDateTimeForInput(initialData.timestamp)
+			: formatDateTimeForInput(new Date());
 		vendor = initialData?.vendor || '';
 		notes = initialData?.notes || '';
 	});
@@ -44,7 +44,7 @@
 		try {
 			await onSubmit({
 				amount: parseFloat(amount.toString()),
-				timestamp: new Date(timestamp),
+				timestamp: normalizeDateForStorage(timestamp, { kind: 'datetime' }).toISOString(),
 				vendor: vendor || null,
 				notes: notes || null
 			});

@@ -2,8 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createBill, getAllBills } from '$lib/server/db/queries';
 import type { NewBill } from '$lib/server/db/schema';
-import { parseLocalDate } from '$lib/utils/dates';
-import { endOfDay } from 'date-fns';
+import { normalizeDateForStorage } from '$lib/utils/dates';
 
 // GET /api/bills - Get all bills
 export const GET: RequestHandler = async ({ url }) => {
@@ -48,19 +47,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Missing recurrence interval or unit' }, { status: 400 });
 		}
 
-		// Parse and validate due date
 		let dueDate: Date;
 		try {
-			if (typeof data.dueDate === 'string' && data.dueDate.includes('T')) {
-				// ISO timestamp format: "2025-11-24T06:00:00.000Z"
-				dueDate = endOfDay(new Date(data.dueDate));
-			} else {
-				// YYYY-MM-DD format
-				dueDate = endOfDay(parseLocalDate(data.dueDate));
-			}
+			dueDate = normalizeDateForStorage(data.dueDate, { kind: 'date', boundary: 'end' });
 		} catch (error) {
 			console.error('Error parsing due date:', { dueDate: data.dueDate, error });
-			return json({ error: 'Invalid due date format. Expected YYYY-MM-DD or ISO timestamp' }, { status: 400 });
+			return json({ error: 'Invalid due date format. Expected YYYY-MM-DD' }, { status: 400 });
 		}
 
 		const parsedPaymentMethodId = data.paymentMethodId ? parseInt(data.paymentMethodId) : null;

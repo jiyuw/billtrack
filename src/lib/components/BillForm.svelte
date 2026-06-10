@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { Category } from '$lib/types/bill';
 	import type { RecurrenceUnit } from '$lib/types/bill';
-	import { format } from 'date-fns';
 	import Button from '$lib/components/Button.svelte';
 	import type { PaymentMethod } from '$lib/server/db/schema';
 	import type { AssetTag } from '$lib/server/db/schema';
+	import { formatDateForInput } from '$lib/utils/dates';
 
 	interface Props {
 		categories: Category[];
@@ -43,7 +43,7 @@
 
 	let name = $state('');
 	let amount = $state(0);
-	let dueDate = $state(format(new Date(), 'yyyy-MM-dd'));
+	let dueDate = $state(formatDateForInput(new Date()));
 	let paymentLink = $state('');
 	let categoryId = $state<number | null>(null);
 	let assetTagId = $state<number | null>(null);
@@ -61,7 +61,7 @@
 	$effect(() => {
 		name = initialData?.name || '';
 		amount = initialData?.amount || 0;
-		dueDate = initialData?.dueDate ? format(initialData.dueDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+		dueDate = initialData?.dueDate ? formatDateForInput(initialData.dueDate) : formatDateForInput(new Date());
 		paymentLink = initialData?.paymentLink || '';
 		categoryId = initialData?.categoryId || null;
 		assetTagId = initialData?.assetTagId || null;
@@ -80,14 +80,10 @@
 		isSubmitting = true;
 
 		try {
-			// Parse date as local time to avoid timezone issues
-			const [year, month, day] = dueDate.split('-').map(Number);
-			const localDate = new Date(year, month - 1, day);
-
 			await onSubmit({
 				name,
 				amount: isVariable ? 0 : parseFloat(amount.toString()),
-				dueDate: localDate,
+				dueDate,
 				paymentLink: paymentLink || null,
 				categoryId,
 				assetTagId,
@@ -95,7 +91,7 @@
 				recurrenceInterval: isRecurring ? recurrenceInterval : null,
 				recurrenceUnit: isRecurring ? recurrenceUnit : null,
 				recurrenceDay: isRecurring && (recurrenceUnit === 'month' || recurrenceUnit === 'year')
-					? (recurrenceDay ?? localDate.getDate())
+					? (recurrenceDay ?? Number(dueDate.split('-')[2]))
 					: null,
 				isAutopay,
 				paymentMethodId: isAutopay ? paymentMethodId : null,

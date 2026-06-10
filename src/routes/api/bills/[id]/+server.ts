@@ -9,8 +9,7 @@ import {
 	rebuildCurrentAndFutureCycles
 } from '$lib/server/db/bill-queries';
 import { calculateNextDueDate } from '$lib/server/utils/recurrence';
-import { parseLocalDate } from '$lib/utils/dates';
-import { endOfDay } from 'date-fns';
+import { normalizeDateForStorage } from '$lib/utils/dates';
 
 // GET /api/bills/[id] - Get a single bill
 export const GET: RequestHandler = async ({ params }) => {
@@ -40,17 +39,13 @@ export const PUT: RequestHandler = async ({ params, request }) => {
 		}
 		const oldCurrentCycle = await getCurrentCycle(id);
 
-		// Handle both ISO timestamp and YYYY-MM-DD formats for dueDate
 		let parsedDueDate: Date | undefined;
 		if (data.dueDate) {
 			try {
-				if (data.dueDate.includes('T')) {
-					// ISO timestamp format: "2025-10-31T05:00:00.000Z"
-					parsedDueDate = endOfDay(new Date(data.dueDate));
-				} else {
-					// YYYY-MM-DD format
-					parsedDueDate = endOfDay(parseLocalDate(data.dueDate));
-				}
+				parsedDueDate = normalizeDateForStorage(data.dueDate, {
+					kind: 'date',
+					boundary: 'end'
+				});
 			} catch (error) {
 				console.error('Error parsing due date:', { dueDate: data.dueDate, error });
 				return json({ error: 'Invalid due date format. Expected YYYY-MM-DD' }, { status: 400 });
@@ -149,7 +144,9 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 			const note = amountPaid !== currentBill.amount
 				? `Payment recorded. Original amount: $${currentBill.amount.toFixed(2)}`
 				: 'Payment recorded';
-			const parsedPaymentDate = paymentDate ? parseLocalDate(paymentDate) : new Date();
+			const parsedPaymentDate = paymentDate
+				? normalizeDateForStorage(paymentDate, { kind: 'date', boundary: 'start' })
+				: new Date();
 			const cycleId = paymentCycleId ? parseInt(paymentCycleId) : null;
 			if (cycleId) {
 				await createPaymentForCycle(
