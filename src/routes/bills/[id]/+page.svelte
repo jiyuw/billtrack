@@ -7,6 +7,8 @@
 	import { format } from 'date-fns';
 	import {
 		ArrowLeft,
+		ArrowDownRight,
+		ArrowUpRight,
 		Calendar,
 		DollarSign,
 		TrendingUp,
@@ -32,7 +34,6 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import BillForm from '$lib/components/BillForm.svelte';
 	import PaymentModal from '$lib/components/PaymentModal.svelte';
-	import LineChart from '$lib/components/LineChart.svelte';
 	import type { BillPayment } from '$lib/server/db/schema';
 
 	let { data }: { data: PageData } = $props();
@@ -56,24 +57,60 @@
 	const historyCycles = $derived.by(() =>
 		[...displayCycles]
 			.sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
-			.slice(-12)
+			.slice(-10)
 	);
 
-	const chartRange = $derived.by(() => {
-		const lastCycles = historyCycles;
-		const rangeStart = lastCycles[0]?.startDate ?? null;
-		const rangeEnd =
-			lastCycles[lastCycles.length - 1]?.dueDate ??
-			lastCycles[lastCycles.length - 1]?.endDate ??
-			null;
-		return { lastCycles, rangeStart, rangeEnd };
+	const historyHighlights = $derived.by(() => {
+		if (historyCycles.length === 0) {
+			return { minAmount: 0, maxAmount: 0, minCycleId: null, maxCycleId: null };
+		}
+
+		let minCycle = historyCycles[0];
+		let maxCycle = historyCycles[0];
+
+		for (const cycle of historyCycles) {
+			if (cycle.totalPaid < minCycle.totalPaid) minCycle = cycle;
+			if (cycle.totalPaid > maxCycle.totalPaid) maxCycle = cycle;
+		}
+
+		return {
+			minAmount: minCycle.totalPaid,
+			maxAmount: maxCycle.totalPaid,
+			minCycleId: minCycle.id,
+			maxCycleId: maxCycle.id
+		};
 	});
 
-	const chartPoints = $derived.by(() => {
-		return historyCycles.map((cycle) => ({
-				x: cycle.dueDate ?? cycle.endDate,
-				y: cycle.totalPaid
-			}));
+	const historyCards = $derived.by(() => {
+		const { minAmount, maxAmount, minCycleId, maxCycleId } = historyHighlights;
+		const range = Math.max(maxAmount - minAmount, 1);
+
+		return historyCycles.map((cycle, index) => {
+			const previous = index > 0 ? historyCycles[index - 1] : null;
+			const delta = previous ? cycle.totalPaid - previous.totalPaid : 0;
+			const isLowest = cycle.id === minCycleId;
+			const isHighest = cycle.id === maxCycleId;
+			const toneStyle =
+				isLowest
+					? 'background-color: color-mix(in srgb, white 72%, rgb(16 185 129) 28%); border-color: color-mix(in srgb, white 60%, rgb(16 185 129) 40%);'
+					: isHighest
+						? 'background-color: color-mix(in srgb, white 72%, rgb(244 63 94) 28%); border-color: color-mix(in srgb, white 60%, rgb(244 63 94) 40%);'
+						: 'background-color: rgb(255 255 255); border-color: rgb(229 231 235);';
+
+			return {
+				...cycle,
+				delta,
+				isLowest,
+				isHighest,
+				toneStyle,
+				amountClass:
+					isLowest
+						? 'text-emerald-700'
+						: isHighest
+							? 'text-rose-700'
+							: 'text-gray-900'
+			};
+		});
 	});
 
 	const AssetIcon = $derived.by(() => {
@@ -142,6 +179,28 @@
 	let showEditModal = $state(false);
 	let showPaymentModal = $state(false);
 	let editingPayment = $state<BillPayment | null>(null);
+	let historyScrollContainer = $state<HTMLDivElement | null>(null);
+	let canScrollHistoryLeft = $state(false);
+	let canScrollHistoryRight = $state(false);
+
+	function updateHistoryScrollHints() {
+		if (!historyScrollContainer) {
+			canScrollHistoryLeft = false;
+			canScrollHistoryRight = false;
+			return;
+		}
+
+		const { scrollLeft, scrollWidth, clientWidth } = historyScrollContainer;
+		canScrollHistoryLeft = scrollLeft > 8;
+		canScrollHistoryRight = scrollLeft + clientWidth < scrollWidth - 8;
+	}
+
+	$effect(() => {
+		historyCards.length;
+		queueMicrotask(() => {
+			updateHistoryScrollHints();
+		});
+	});
 
 	async function handleTogglePaid() {
 		if (!isCyclePaid) {
@@ -598,16 +657,96 @@
 				</div>
 			{/if}
 
-			{#if historyCycles.length > 0}
-				<div class="mb-6 relative">
-					<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Last {historyCycles.length} cycles</p>
-					<LineChart
-						points={chartPoints}
-						cycleBoundaries={chartRange.lastCycles.map((cycle) => cycle.startDate)}
-						rangeStart={chartRange.rangeStart ?? undefined}
-						rangeEnd={chartRange.rangeEnd ?? undefined}
-						height={220}
-					/>
+			{#if historyCards.length > 0}
+				<div class="mb-6">
+					<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Recent {historyCards.length} cycles
+						</p>
+						<div class="flex flex-wrap items-center gap-3 text-xs">
+							<div class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+								<ArrowDownRight class="h-3.5 w-3.5" />
+								Lowest
+							</div>
+							<div class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+								<ArrowUpRight class="h-3.5 w-3.5" />
+								Highest
+							</div>
+						</div>
+					</div>
+
+					<div class="relative overflow-hidden rounded-3xl">
+						{#if canScrollHistoryLeft}
+							<div class="pointer-events-none absolute left-3 top-1/2 z-30 -translate-y-1/2 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-600 shadow-sm dark:bg-gray-900/90 dark:text-gray-300">
+								← More
+							</div>
+						{/if}
+						{#if canScrollHistoryRight}
+							<div class="pointer-events-none absolute right-3 top-1/2 z-30 -translate-y-1/2 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-600 shadow-sm dark:bg-gray-900/90 dark:text-gray-300">
+								More →
+							</div>
+						{/if}
+						<div
+							bind:this={historyScrollContainer}
+							onscroll={updateHistoryScrollHints}
+							class="overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+						>
+							<div class="mx-auto flex w-max min-w-full justify-center gap-3 py-1">
+								{#each historyCards as cycle}
+									<div
+										class="w-[204px] shrink-0 rounded-2xl border p-4 shadow-sm transition-colors"
+										style={cycle.toneStyle}
+									>
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0">
+												<p class="text-xs font-medium uppercase tracking-[0.18em] text-gray-500">
+													Cycle
+												</p>
+												<div class="mt-1 space-y-1">
+													<p class="text-sm font-semibold text-gray-900">
+														{format(cycle.startDate, 'MMM d, yyyy')}
+													</p>
+													<p class="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">
+														through
+													</p>
+													<p class="text-sm font-semibold text-gray-900">
+														{format(cycle.endDate, 'MMM d, yyyy')}
+													</p>
+												</div>
+											</div>
+
+											<div class="flex flex-col items-end gap-1">
+												{#if cycle.isLowest}
+													<div
+														class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"
+														title="Lowest payment"
+													>
+														<ArrowDownRight class="h-3.5 w-3.5" />
+													</div>
+												{:else if cycle.isHighest}
+													<div
+														class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-100 text-rose-700"
+														title="Highest payment"
+													>
+														<ArrowUpRight class="h-3.5 w-3.5" />
+													</div>
+												{/if}
+											</div>
+										</div>
+
+										<div class="mt-5">
+											<div>
+												<p class="text-xs text-gray-500">Paid</p>
+												<p class={`text-2xl font-bold ${cycle.amountClass}`}>
+													{formatCurrency(cycle.totalPaid)}
+												</p>
+											</div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					</div>
 				</div>
 			{/if}
 
