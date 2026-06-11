@@ -1,6 +1,7 @@
 services:
   billzzz:
-    build: .
+    image: ghcr.io/jiyuw/billzzz:latest
+    pull_policy: always
     container_name: billzzz
     restart: unless-stopped
     ports:

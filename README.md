@@ -109,12 +109,31 @@ A comprehensive personal finance management application built with SvelteKit 5, 
 
 ## Docker Deployment
 
-### Using Docker Compose (Recommended)
+### Unraid / Dockhand (Recommended)
 
-1. Build and start the container:
+This repository is designed to publish a production image to GitHub Container Registry on every push to `main`.
+
+- Image: `ghcr.io/jiyuw/billzzz:latest`
+- Stable branch tag: `ghcr.io/jiyuw/billzzz:main`
+- Immutable build tags: `ghcr.io/jiyuw/billzzz:sha-<commit>`
+
+For Dockhand or any other GitOps-style deploy tool, prefer **pulling the published image** instead of syncing the repo and rebuilding locally.
+
+Recommended Dockhand flow:
+
+1. Point your app at `ghcr.io/jiyuw/billzzz:latest`
+2. Enable image pull / refresh on update
+3. Restart or recreate the container when a new image is detected
+4. Keep `/app/data` mounted so the SQLite database persists across deploys
+
+This is more reliable than GitHub repo sync for this app, because the running container serves the built SvelteKit output, not the raw repository contents.
+
+### Using Docker Compose
+
+1. Pull and start the container:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 2. The app will be available at `http://localhost:3000`
@@ -133,10 +152,10 @@ docker compose down
 
 ### Using Docker directly
 
-1. Build the image:
+1. Pull the image:
 
 ```bash
-docker build -t billzzz .
+docker pull ghcr.io/jiyuw/billzzz:latest
 ```
 
 2. Run the container:
@@ -146,7 +165,16 @@ docker run -d \
   --name billzzz \
   -p 3000:3000 \
   -v $(pwd)/data:/app/data \
-  billzzz
+  ghcr.io/jiyuw/billzzz:latest
+```
+
+### Building Locally
+
+If you want to build the image yourself instead of using GHCR:
+
+```bash
+docker build -t billzzz:local .
+docker run -d --name billzzz -p 3000:3000 -v $(pwd)/data:/app/data billzzz:local
 ```
 
 ### Data Persistence
