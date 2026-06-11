@@ -7,8 +7,6 @@
 	import { format } from 'date-fns';
 	import {
 		ArrowLeft,
-		ArrowDownRight,
-		ArrowUpRight,
 		Calendar,
 		DollarSign,
 		TrendingUp,
@@ -34,6 +32,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import BillForm from '$lib/components/BillForm.svelte';
 	import PaymentModal from '$lib/components/PaymentModal.svelte';
+	import LineChart from '$lib/components/LineChart.svelte';
 	import type { BillPayment } from '$lib/server/db/schema';
 
 	let { data }: { data: PageData } = $props();
@@ -60,58 +59,45 @@
 			.slice(-10)
 	);
 
-	const historyHighlights = $derived.by(() => {
-		if (historyCycles.length === 0) {
-			return { minAmount: 0, maxAmount: 0, minCycleId: null, maxCycleId: null };
+	// Group payments by cycle
+	const paymentsByCycle = $derived.by(() => payments.reduce((acc, payment) => {
+		if (!acc[payment.cycleId]) {
+			acc[payment.cycleId] = [];
 		}
+		acc[payment.cycleId].push(payment);
+		return acc;
+	}, {} as Record<number, typeof payments>));
 
-		let minCycle = historyCycles[0];
-		let maxCycle = historyCycles[0];
-
-		for (const cycle of historyCycles) {
-			if (cycle.totalPaid < minCycle.totalPaid) minCycle = cycle;
-			if (cycle.totalPaid > maxCycle.totalPaid) maxCycle = cycle;
-		}
-
-		return {
-			minAmount: minCycle.totalPaid,
-			maxAmount: maxCycle.totalPaid,
-			minCycleId: minCycle.id,
-			maxCycleId: maxCycle.id
-		};
-	});
-
-	const historyCards = $derived.by(() => {
-		const { minAmount, maxAmount, minCycleId, maxCycleId } = historyHighlights;
-		const range = Math.max(maxAmount - minAmount, 1);
-
-		return historyCycles.map((cycle, index) => {
-			const previous = index > 0 ? historyCycles[index - 1] : null;
-			const delta = previous ? cycle.totalPaid - previous.totalPaid : 0;
-			const isLowest = cycle.id === minCycleId;
-			const isHighest = cycle.id === maxCycleId;
-			const toneStyle =
-				isLowest
-					? 'background-color: color-mix(in srgb, white 72%, rgb(16 185 129) 28%); border-color: color-mix(in srgb, white 60%, rgb(16 185 129) 40%);'
-					: isHighest
-						? 'background-color: color-mix(in srgb, white 72%, rgb(244 63 94) 28%); border-color: color-mix(in srgb, white 60%, rgb(244 63 94) 40%);'
-						: 'background-color: rgb(255 255 255); border-color: rgb(229 231 235);';
+	const historyChartPoints = $derived.by(() =>
+		historyCycles.map((cycle, index) => {
+			const cyclePayments = paymentsByCycle[cycle.id] ?? [];
+			const paymentDates = cyclePayments.length > 0
+				? cyclePayments
+						.map((payment) => format(payment.paymentDate, 'MMM d, yyyy'))
+						.join(', ')
+				: 'No payment date';
 
 			return {
-				...cycle,
-				delta,
-				isLowest,
-				isHighest,
-				toneStyle,
-				amountClass:
-					isLowest
-						? 'text-emerald-700'
-						: isHighest
-							? 'text-rose-700'
-							: 'text-gray-900'
+				x: index + 1,
+				y: cycle.totalPaid,
+				meta: {
+					cycleNumber: index + 1,
+					cyclePeriod: `${format(cycle.startDate, 'MMM d, yyyy')} - ${format(cycle.endDate, 'MMM d, yyyy')}`,
+					paymentDates,
+					amountLabel: formatCurrency(cycle.totalPaid)
+				}
 			};
-		});
-	});
+		})
+	);
+
+	const historyCycleOptions = $derived.by(() =>
+		[...historyCycles]
+			.sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
+			.map((cycle) => ({
+				id: cycle.id,
+				label: `${format(cycle.startDate, 'MMM d, yyyy')} - ${format(cycle.endDate, 'MMM d, yyyy')}`
+			}))
+	);
 
 	const AssetIcon = $derived.by(() => {
 		if (bill.assetTag?.type === 'house') return Home;
@@ -142,15 +128,6 @@
 		return iconMap[bill.category.icon as keyof typeof iconMap] || null;
 	});
 
-	// Group payments by cycle
-	const paymentsByCycle = $derived.by(() => payments.reduce((acc, payment) => {
-		if (!acc[payment.cycleId]) {
-			acc[payment.cycleId] = [];
-		}
-		acc[payment.cycleId].push(payment);
-		return acc;
-	}, {} as Record<number, typeof payments>));
-
 	function getCycleName(cycle: typeof cycles[0]) {
 		const start = format(cycle.startDate, 'MMM d, yyyy');
 		const end = format(cycle.endDate, 'MMM d, yyyy');
@@ -179,29 +156,26 @@
 	let showEditModal = $state(false);
 	let showPaymentModal = $state(false);
 	let editingPayment = $state<BillPayment | null>(null);
-	let historyScrollContainer = $state<HTMLDivElement | null>(null);
-	let canScrollHistoryLeft = $state(false);
-	let canScrollHistoryRight = $state(false);
+	let selectedHistoryCycleId = $state<number | null>(null);
 
-	function updateHistoryScrollHints() {
-		if (!historyScrollContainer) {
-			canScrollHistoryLeft = false;
-			canScrollHistoryRight = false;
+	$effect(() => {
+		const options = historyCycleOptions;
+		if (options.length === 0) {
+			selectedHistoryCycleId = null;
 			return;
 		}
 
-		const { scrollLeft, scrollWidth, clientWidth } = historyScrollContainer;
-		canScrollHistoryLeft = scrollLeft > 8;
-		canScrollHistoryRight = scrollLeft + clientWidth < scrollWidth - 8;
-	}
-
-	$effect(() => {
-		historyCards.length;
-		queueMicrotask(() => {
-			updateHistoryScrollHints();
-		});
+		if (!options.some((option) => option.id === selectedHistoryCycleId)) {
+			selectedHistoryCycleId = options[0].id;
+		}
 	});
 
+	const selectedHistoryCycle = $derived.by(
+		() => historyCycles.find((cycle) => cycle.id === selectedHistoryCycleId) ?? null
+	);
+	const selectedHistoryPayments = $derived.by(
+		() => (selectedHistoryCycle ? paymentsByCycle[selectedHistoryCycle.id] ?? [] : [])
+	);
 	async function handleTogglePaid() {
 		if (!isCyclePaid) {
 			showPaymentModal = true;
@@ -657,122 +631,63 @@
 				</div>
 			{/if}
 
-			{#if historyCards.length > 0}
+			{#if historyChartPoints.length > 0}
 				<div class="mb-6">
 					<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
 						<p class="text-sm text-gray-600 dark:text-gray-400">
-							Recent {historyCards.length} cycles
+							Recent {historyChartPoints.length} cycles
 						</p>
-						<div class="flex flex-wrap items-center gap-3 text-xs">
-							<div class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-								<ArrowDownRight class="h-3.5 w-3.5" />
-								Lowest
-							</div>
-							<div class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
-								<ArrowUpRight class="h-3.5 w-3.5" />
-								Highest
-							</div>
-						</div>
 					</div>
-
-					<div class="relative overflow-hidden rounded-3xl">
-						{#if canScrollHistoryLeft}
-							<div class="pointer-events-none absolute left-3 top-1/2 z-30 -translate-y-1/2 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-600 shadow-sm dark:bg-gray-900/90 dark:text-gray-300">
-								← More
-							</div>
-						{/if}
-						{#if canScrollHistoryRight}
-							<div class="pointer-events-none absolute right-3 top-1/2 z-30 -translate-y-1/2 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-gray-600 shadow-sm dark:bg-gray-900/90 dark:text-gray-300">
-								More →
-							</div>
-						{/if}
-						<div
-							bind:this={historyScrollContainer}
-							onscroll={updateHistoryScrollHints}
-							class="overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-						>
-							<div class="mx-auto flex w-max min-w-full justify-center gap-3 py-1">
-								{#each historyCards as cycle}
-									<div
-										class="w-[204px] shrink-0 rounded-2xl border p-4 shadow-sm transition-colors"
-										style={cycle.toneStyle}
-									>
-										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0">
-												<p class="text-xs font-medium uppercase tracking-[0.18em] text-gray-500">
-													Cycle
-												</p>
-												<div class="mt-1 space-y-1">
-													<p class="text-sm font-semibold text-gray-900">
-														{format(cycle.startDate, 'MMM d, yyyy')}
-													</p>
-													<p class="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">
-														through
-													</p>
-													<p class="text-sm font-semibold text-gray-900">
-														{format(cycle.endDate, 'MMM d, yyyy')}
-													</p>
-												</div>
-											</div>
-
-											<div class="flex flex-col items-end gap-1">
-												{#if cycle.isLowest}
-													<div
-														class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"
-														title="Lowest payment"
-													>
-														<ArrowDownRight class="h-3.5 w-3.5" />
-													</div>
-												{:else if cycle.isHighest}
-													<div
-														class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-100 text-rose-700"
-														title="Highest payment"
-													>
-														<ArrowUpRight class="h-3.5 w-3.5" />
-													</div>
-												{/if}
-											</div>
-										</div>
-
-										<div class="mt-5">
-											<div>
-												<p class="text-xs text-gray-500">Paid</p>
-												<p class={`text-2xl font-bold ${cycle.amountClass}`}>
-													{formatCurrency(cycle.totalPaid)}
-												</p>
-											</div>
-										</div>
-									</div>
-								{/each}
-							</div>
-						</div>
+					<div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/30">
+						<LineChart
+							points={historyChartPoints}
+							yLabel="Amount"
+							showXAxis={false}
+							showXAxisLabels={false}
+							height={280}
+						/>
 					</div>
 				</div>
 			{/if}
 
-			<div class="space-y-4">
-				{#each displayCycles as cycle}
+			{#if historyCycleOptions.length > 0 && selectedHistoryCycle}
+				<div class="space-y-4">
+					<div class="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/20">
+						<label for="historyCycleSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							View Cycle Details
+						</label>
+						<select
+							id="historyCycleSelect"
+							bind:value={selectedHistoryCycleId}
+							class="block w-full rounded-lg border-gray-300 bg-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+						>
+							{#each historyCycleOptions as option}
+								<option value={option.id}>{option.label}</option>
+							{/each}
+						</select>
+					</div>
+
 					<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
 						<div class="flex items-center justify-between mb-3">
 							<div>
 								<h3 class="font-medium text-gray-900 dark:text-gray-100">
-									{getCycleName(cycle)}
+									{getCycleName(selectedHistoryCycle)}
 								</h3>
 								{#if !bill.isVariable}
 									<p class="text-sm text-gray-600 dark:text-gray-400">
-										Expected: {formatCurrency(cycle.expectedAmount)}
+										Expected: {formatCurrency(selectedHistoryCycle.expectedAmount)}
 									</p>
 								{/if}
 							</div>
 							<div class="text-right">
 								<p class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-									{formatCurrency(cycle.totalPaid)}
+									{formatCurrency(selectedHistoryCycle.totalPaid)}
 								</p>
-								{#if cycle.isPaid}
+								{#if selectedHistoryCycle.isPaid}
 									<span class="text-xs text-green-600 dark:text-green-400 font-medium">Paid</span>
-								{:else if cycle.totalPaid > 0}
+								{:else if selectedHistoryCycle.totalPaid > 0}
 									<span class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-										Partial ({getProgressPercentage(cycle.totalPaid, cycle.expectedAmount).toFixed(0)}%)
+										Partial ({getProgressPercentage(selectedHistoryCycle.totalPaid, selectedHistoryCycle.expectedAmount).toFixed(0)}%)
 									</span>
 								{:else}
 									<span class="text-xs text-gray-500 dark:text-gray-400">Unpaid</span>
@@ -780,11 +695,10 @@
 							</div>
 						</div>
 
-						<!-- Payments in this cycle -->
-						{#if paymentsByCycle[cycle.id]?.length > 0}
+						{#if selectedHistoryPayments.length > 0}
 							<div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
 								<div class="space-y-1">
-									{#each paymentsByCycle[cycle.id] as payment}
+									{#each selectedHistoryPayments as payment}
 										<div class="flex items-center justify-between gap-3 text-sm">
 											<span class="min-w-0 text-gray-600 dark:text-gray-400">
 												{format(payment.paymentDate, 'MMM d, yyyy')}
@@ -808,10 +722,14 @@
 									{/each}
 								</div>
 							</div>
+						{:else}
+							<div class="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+								No payments recorded in this cycle.
+							</div>
 						{/if}
 					</div>
-				{/each}
-			</div>
+				</div>
+			{/if}
 		</div>
 	{:else}
 		<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-8 text-center">

@@ -6,36 +6,46 @@
 		LineElement,
 		PointElement,
 		LinearScale,
-		TimeScale,
 		Tooltip,
-		Filler
+		Filler,
+		CategoryScale
 	} from 'chart.js';
-	import 'chartjs-adapter-date-fns';
-	import annotationPlugin from 'chartjs-plugin-annotation';
 
-	Chart.register(LineController, LineElement, PointElement, LinearScale, TimeScale, Tooltip, Filler, annotationPlugin);
+	Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
 
 	interface Point {
-		x: Date;
+		x: number;
 		y: number;
+		meta?: {
+			cycleNumber: number;
+			cyclePeriod: string;
+			paymentDates: string;
+			amountLabel: string;
+		};
 	}
 
 	let {
 		points,
-		cycleBoundaries = [],
-		rangeStart,
-		rangeEnd,
+		yLabel = 'Amount',
+		showXAxis = true,
+		showXAxisLabels = true,
 		height = 220
 	}: {
 		points: Point[];
-		cycleBoundaries?: Date[];
-		rangeStart?: Date;
-		rangeEnd?: Date;
+		yLabel?: string;
+		showXAxis?: boolean;
+		showXAxisLabels?: boolean;
 		height?: number;
 	} = $props();
 
+	type ChartPoint = {
+		x: number;
+		y: number;
+		meta?: Point['meta'];
+	};
+
 	let canvas: HTMLCanvasElement | null = null;
-	let chart: Chart<'line', { x: number; y: number }[], unknown> | null = null;
+	let chart: Chart<'line', ChartPoint[], unknown> | null = null;
 
 	function renderChart() {
 		if (!canvas) return;
@@ -43,13 +53,17 @@
 			chart.destroy();
 		}
 
-		const chartPoints = points.map((point) => ({
-			x: point.x.getTime(),
-			y: point.y
+		const chartPoints: ChartPoint[] = points.map((point) => ({
+			x: point.x,
+			y: point.y,
+			meta: point.meta
 		}));
-		const boundaryTimestamps = cycleBoundaries.map((date) => date.getTime());
-		const minRange = rangeStart?.getTime();
-		const maxRange = rangeEnd?.getTime();
+		const pointCount = chartPoints.length;
+		const maxCycle = chartPoints.length > 0 ? Math.max(...chartPoints.map((point) => point.x)) : 1;
+		const xMin = pointCount <= 1 ? 0.5 : pointCount === 2 ? 0.5 : 0.7;
+		const xMax = pointCount <= 1 ? 1.5 : pointCount === 2 ? maxCycle + 0.5 : maxCycle + 0.3;
+		const pointRadius = pointCount <= 2 ? 5 : 3.5;
+		const pointHoverRadius = pointCount <= 2 ? 7 : 5;
 
 		chart = new Chart(canvas, {
 			type: 'line',
@@ -62,8 +76,8 @@
 						backgroundColor: 'transparent',
 						tension: 0,
 						borderWidth: 2,
-						pointRadius: 3.5,
-						pointHoverRadius: 5,
+						pointRadius,
+						pointHoverRadius,
 						pointBackgroundColor: '#3b82f6',
 						pointBorderWidth: 0
 					}
@@ -79,41 +93,45 @@
 						enabled: true,
 						displayColors: false,
 						callbacks: {
-							title: (items) => {
-								const value = items[0]?.parsed?.x;
-								return value ? new Date(value).toLocaleDateString() : '';
-							},
-							label: (item) => `$${Number(item.parsed?.y ?? 0).toFixed(2)}`
+							title: () => '',
+							label: (item) => {
+								const point = item.raw as ChartPoint | undefined;
+								if (!point?.meta) return `$${Number(item.parsed?.y ?? 0).toFixed(2)}`;
+								return [
+									`Period: ${point.meta.cyclePeriod}`,
+									`Payment Date: ${point.meta.paymentDates}`,
+									`Amount: ${point.meta.amountLabel}`
+								];
+							}
 						}
-					},
-					annotation: {
-						annotations: boundaryTimestamps.map((timestamp) => ({
-							type: 'line',
-							xMin: timestamp,
-							xMax: timestamp,
-							borderColor: 'rgba(148, 163, 184, 0.35)',
-							borderWidth: 1,
-							borderDash: [4, 4]
-						}))
 					}
 				},
 				scales: {
 					x: {
-						type: 'time',
-						time: {
-							unit: 'month',
-							displayFormats: { month: 'MMM yyyy' }
-						},
+						type: 'linear',
+						min: xMin,
+						max: xMax,
 						grid: { display: false },
-						min: minRange,
-						max: maxRange,
+						title: {
+							display: showXAxis,
+							text: ''
+						},
+						border: {
+							display: showXAxis
+						},
 						ticks: {
-							maxTicksLimit: 6
+							stepSize: 1,
+							display: showXAxisLabels,
+							callback: (value) => `${value}`
 						}
 					},
 					y: {
 						beginAtZero: true,
 						grid: { color: 'rgba(0,0,0,0.06)' },
+						title: {
+							display: true,
+							text: yLabel
+						},
 						ticks: {
 							callback: (value) => `$${value}`
 						}
