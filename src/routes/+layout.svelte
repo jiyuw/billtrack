@@ -32,7 +32,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<Navigation />
+	<Navigation appVersion={data.appVersion} />
 	<main class={isMobile ? 'pb-20' : ''}>
 		{@render children()}
 	</main>

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 
+	let { appVersion }: { appVersion: string } = $props();
+
 	const isActive = (path: string) => $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
 </script>
 
@@ -36,6 +38,10 @@
 						Settings
 					</a>
 				</div>
+			</div>
+
+			<div class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold tracking-wide text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
+				v{appVersion}
 			</div>
 		</div>
 	</div>

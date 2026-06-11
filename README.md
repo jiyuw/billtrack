@@ -116,17 +116,41 @@ This repository is designed to publish a production image to GitHub Container Re
 - Image: `ghcr.io/jiyuw/billzzz:latest`
 - Stable branch tag: `ghcr.io/jiyuw/billzzz:main`
 - Immutable build tags: `ghcr.io/jiyuw/billzzz:sha-<commit>`
+- Release tags: `ghcr.io/jiyuw/billzzz:v<version>` and `ghcr.io/jiyuw/billzzz:<major>.<minor>`
 
 For Dockhand or any other GitOps-style deploy tool, prefer **pulling the published image** instead of syncing the repo and rebuilding locally.
 
 Recommended Dockhand flow:
 
-1. Point your app at `ghcr.io/jiyuw/billzzz:latest`
-2. Enable image pull / refresh on update
-3. Restart or recreate the container when a new image is detected
-4. Keep `/app/data` mounted so the SQLite database persists across deploys
+1. For testing the newest `main`, point your app at `ghcr.io/jiyuw/billzzz:latest`
+2. For a stable deployment, pin to a release tag such as `ghcr.io/jiyuw/billzzz:v1.0.0`
+3. Enable image pull / refresh on update
+4. Recreate the container after pulling a new image
+5. Keep `/app/data` mounted so the SQLite database persists across deploys
 
 This is more reliable than GitHub repo sync for this app, because the running container serves the built SvelteKit output, not the raw repository contents.
+
+### Release Versioning
+
+Use `package.json` as the app's version source, and use Git tags to publish deployable releases.
+
+- `main` pushes publish rolling tags: `latest`, `main`, and `sha-<commit>`
+- `v*` Git tags publish release tags: `v1.2.0` and `1.2`
+- Dockhand should follow a release tag, not `latest`, when you want predictable upgrades
+
+Simple release flow:
+
+1. Update `package.json` version to the release you want, such as `1.1.0`
+2. Commit and push `main`
+3. Create and push a matching tag: `git tag v1.1.0 && git push origin v1.1.0`
+4. Wait for GitHub Actions to publish `ghcr.io/jiyuw/billzzz:v1.1.0`
+5. In Dockhand, change your stack image to that exact tag and redeploy
+
+Recommended rules:
+
+- Patch release: `1.0.1` for bug fixes
+- Minor release: `1.1.0` for backward-compatible features
+- Major release: `2.0.0` for breaking changes or data model changes that need special handling
 
 ### Using Docker Compose
 

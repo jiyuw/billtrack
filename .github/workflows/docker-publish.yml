@@ -4,8 +4,12 @@ on:
   push:
     branches: [ "main" ]
     tags: [ "v*" ]
+  workflow_dispatch:
   pull_request:
     branches: [ "main" ]
+
+run-name: >-
+  Publish Docker Image (${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.pull_request.number) || github.ref_name }})
 
 env:
   REGISTRY: ghcr.io
@@ -15,6 +19,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    concurrency:
+      group: docker-publish-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
       packages: write
@@ -33,6 +40,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
 
+      - name: Prepare release context
+        id: release
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            CHANNEL="${GITHUB_REF_NAME}"
+          else
+            VERSION="${GITHUB_SHA::7}"
+            CHANNEL="${GITHUB_REF_NAME}"
+          fi
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "channel=${CHANNEL}" >> "${GITHUB_OUTPUT}"
+          echo "is_tag=$([[ "${GITHUB_REF_TYPE}" == "tag" ]] && echo true || echo false)" >> "${GITHUB_OUTPUT}"
+
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
         uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
@@ -50,14 +73,16 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,prefix=sha-
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
           labels: |
             org.opencontainers.image.title=Billzzz
             org.opencontainers.image.description=Personal finance management app built with SvelteKit and SQLite
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.release.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and push Docker image
         id: build-and-push
@@ -77,3 +102,33 @@ jobs:
           TAGS: ${{ steps.meta.outputs.tags }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+
+      - name: Publish summary
+        if: always()
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+          VERSION: ${{ steps.release.outputs.version }}
+          CHANNEL: ${{ steps.release.outputs.channel }}
+          IS_TAG: ${{ steps.release.outputs.is_tag }}
+        run: |
+          {
+            echo "## Docker publish summary"
+            echo ""
+            echo "- Ref: \`${GITHUB_REF_NAME}\`"
+            echo "- Release version: \`${VERSION}\`"
+            echo "- Channel: \`${CHANNEL}\`"
+            echo "- Tag release: \`${IS_TAG}\`"
+            if [[ -n "${DIGEST}" ]]; then
+              echo "- Digest: \`${DIGEST}\`"
+            fi
+            echo ""
+            echo "### Published image tags"
+            if [[ -n "${TAGS}" ]]; then
+              while IFS= read -r tag; do
+                [[ -n "${tag}" ]] && echo "- \`${tag}\`"
+              done <<< "${TAGS}"
+            else
+              echo "- No image pushed for this run"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
