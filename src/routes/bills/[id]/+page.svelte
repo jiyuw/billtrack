@@ -29,11 +29,13 @@
 		Heart
 	} from 'lucide-svelte';
 	import StatusIndicator from '$lib/components/StatusIndicator.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import BillForm from '$lib/components/BillForm.svelte';
 	import PaymentModal from '$lib/components/PaymentModal.svelte';
 	import LineChart from '$lib/components/LineChart.svelte';
 	import type { BillPayment } from '$lib/server/db/schema';
+	import { getCyclePaymentStatus, getProgressBarClass } from '$lib/utils/bill-status';
 
 	let { data }: { data: PageData } = $props();
 
@@ -138,12 +140,6 @@
 		return expectedAmount > 0 ? Math.min((totalPaid / expectedAmount) * 100, 100) : 0;
 	}
 
-	function getStatusColor(isPaid: boolean, totalPaid: number, expectedAmount: number) {
-		if (isPaid || totalPaid >= expectedAmount) return 'bg-green-500';
-		if (totalPaid > 0) return 'bg-yellow-500';
-		return 'bg-gray-300 dark:bg-gray-600';
-	}
-
 	const isCyclePaid = $derived.by(() => {
 		const cycle = focusCycle ?? currentCycle;
 		if (!cycle) return false;
@@ -152,6 +148,15 @@
 		}
 		return cycle.isPaid || cycle.totalPaid >= cycle.expectedAmount;
 	});
+	const cyclePaymentStatus = $derived.by(() =>
+		getCyclePaymentStatus({
+			isVariable: bill.isVariable,
+			isPaid: focusCycle?.isPaid ?? false,
+			totalPaid: focusCycle?.totalPaid ?? 0,
+			expectedAmount: focusCycle?.expectedAmount ?? bill.amount,
+			dueDate: focusCycle?.dueDate ?? focusCycle?.endDate ?? bill.dueDate
+		})
+	);
 
 	let showEditModal = $state(false);
 	let showPaymentModal = $state(false);
@@ -317,6 +322,9 @@
 						dueDate={(focusCycle ?? bill.currentCycle)?.dueDate ?? (focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate}
 						isPaid={isCyclePaid}
 					/>
+					<StatusBadge status={bill.isRecurring ? 'recurring' : 'one-time'} />
+					<StatusBadge status={bill.isAutopay ? 'autopay' : 'manual'} />
+					<StatusBadge status={bill.isVariable ? 'variable' : 'fixed'} />
 				</div>
 				<p class="text-gray-600 dark:text-gray-400 mt-1">
 					{#if bill.isRecurring}
@@ -539,11 +547,7 @@
 					</div>
 					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
 						<div
-							class="h-3 rounded-full transition-all {getStatusColor(
-								focusCycle.isPaid,
-								focusCycle.totalPaid,
-								focusCycle.expectedAmount
-							)}"
+							class="h-3 rounded-full transition-all {getProgressBarClass(cyclePaymentStatus)}"
 							style="width: {focusCycle.percentPaid}%"
 						></div>
 					</div>
@@ -683,15 +687,20 @@
 								<p class="text-lg font-semibold text-gray-900 dark:text-gray-100">
 									{formatCurrency(selectedHistoryCycle.totalPaid)}
 								</p>
-								{#if selectedHistoryCycle.isPaid}
-									<span class="text-xs text-green-600 dark:text-green-400 font-medium">Paid</span>
-								{:else if selectedHistoryCycle.totalPaid > 0}
-									<span class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-										Partial ({getProgressPercentage(selectedHistoryCycle.totalPaid, selectedHistoryCycle.expectedAmount).toFixed(0)}%)
-									</span>
-								{:else}
-									<span class="text-xs text-gray-500 dark:text-gray-400">Unpaid</span>
-								{/if}
+								<StatusBadge
+									status={getCyclePaymentStatus({
+										isVariable: bill.isVariable,
+										isPaid: selectedHistoryCycle.isPaid,
+										totalPaid: selectedHistoryCycle.totalPaid,
+										expectedAmount: selectedHistoryCycle.expectedAmount,
+										dueDate: selectedHistoryCycle.dueDate ?? selectedHistoryCycle.endDate
+									})}
+									label={selectedHistoryCycle.totalPaid > 0 &&
+									!selectedHistoryCycle.isPaid &&
+									!bill.isVariable
+										? `Partial (${getProgressPercentage(selectedHistoryCycle.totalPaid, selectedHistoryCycle.expectedAmount).toFixed(0)}%)`
+										: undefined}
+								/>
 							</div>
 						</div>
 

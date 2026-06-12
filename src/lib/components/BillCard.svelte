@@ -1,13 +1,15 @@
 <script lang="ts">
 	import type { BillWithCategory, BillWithCycle } from '$lib/types/bill';
-import StatusIndicator from './StatusIndicator.svelte';
-import CategoryBadge from './CategoryBadge.svelte';
-import { format } from 'date-fns';
-import { Home, Car, HelpCircle } from 'lucide-svelte';
+	import StatusIndicator from './StatusIndicator.svelte';
+	import CategoryBadge from './CategoryBadge.svelte';
+	import StatusBadge from './StatusBadge.svelte';
+	import { format } from 'date-fns';
+	import { Home, Car, HelpCircle } from 'lucide-svelte';
 	import { getRecurrenceDescription } from '$lib/utils/recurrence';
 	import { goto } from '$app/navigation';
 	import { formatCurrency } from '$lib/utils/format';
 	import { getAssetTagBannerStyle } from '$lib/utils/asset-tag-banner';
+	import { getCyclePaymentStatus, getProgressBarClass } from '$lib/utils/bill-status';
 
 	interface Props {
 		bill: BillWithCategory | BillWithCycle;
@@ -40,6 +42,15 @@ import { Home, Car, HelpCircle } from 'lucide-svelte';
 		}
 		return currentCycle.totalPaid > 0;
 	});
+	const paymentStatus = $derived.by(() =>
+		getCyclePaymentStatus({
+			isVariable: bill.isVariable,
+			isPaid: focusCycle?.isPaid ?? false,
+			totalPaid: focusCycle?.totalPaid ?? 0,
+			expectedAmount: focusCycle?.expectedAmount ?? bill.amount,
+			dueDate: focusDueDate
+		})
+	);
 	const currentPaid = $derived(focusCycle?.totalPaid ?? 0);
 	const usageDotPosition = $derived.by(() => {
 		if (!usageStats) return 0;
@@ -107,40 +118,17 @@ import { Home, Car, HelpCircle } from 'lucide-svelte';
 		<div class="mb-2 flex flex-wrap items-center gap-2">
 			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">{bill.name}</h3>
 			{#if bill.isRecurring}
-				<span
-					class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium leading-none text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+				<StatusBadge
+					status="recurring"
 					title={bill.recurrenceUnit && bill.recurrenceInterval
 						? getRecurrenceDescription(bill.recurrenceInterval, bill.recurrenceUnit as any, bill.recurrenceDay)
 						: ''}
-				>
-					<svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							fill-rule="evenodd"
-							d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					Recurring
-				</span>
+				/>
 			{/if}
 			{#if bill.isAutopay}
-				<span
-					class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium leading-none text-green-700 dark:bg-green-950 dark:text-green-400"
-					title="This bill is set to autopay"
-				>
-					<svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-						<path
-							d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"
-						/>
-						<path
-							fill-rule="evenodd"
-							d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					Autopay
-				</span>
+				<StatusBadge status="autopay" title="This bill is set to autopay" />
 			{/if}
+			<StatusBadge status={bill.isVariable ? 'variable' : 'fixed'} />
 		</div>
 
 		<div class="mb-3 flex flex-wrap items-center gap-2">
@@ -208,11 +196,7 @@ import { Home, Car, HelpCircle } from 'lucide-svelte';
 				</div>
 				<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
 					<div
-						class="h-2 rounded-full transition-all {focusCycle.isPaid || focusCycle.totalPaid >= focusCycle.expectedAmount
-							? 'bg-green-500'
-							: focusCycle.totalPaid > 0
-							? 'bg-yellow-500'
-							: 'bg-gray-300 dark:bg-gray-600'}"
+						class="h-2 rounded-full transition-all {getProgressBarClass(paymentStatus)}"
 						style="width: {focusCycle.percentPaid}%"
 					></div>
 				</div>

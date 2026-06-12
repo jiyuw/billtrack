@@ -31,6 +31,9 @@ import { endOfDay } from 'date-fns';
 	const payingBill = $derived(
 		payingBillId !== null ? data.bills.find((b) => b.id === payingBillId) : null
 	);
+	const hasActiveFilters = $derived(
+		filterStatus !== 'all' || filterCategory !== null || filterAssetTag !== null || searchQuery.trim().length > 0
+	);
 
 	const filteredBills = $derived.by(() => {
 		let bills = data.bills as BillWithCategory[];
@@ -269,222 +272,136 @@ import { endOfDay } from 'date-fns';
 		</div>
 	</div>
 
-		<!-- Stats Dashboard -->
-		<div class="mb-8">
-			<!-- Mobile: Horizontal scroll -->
-			<div class="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 no-scrollbar md:hidden">
-				<div class="min-w-[280px] snap-center shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
-					<p class="text-sm text-gray-500 dark:text-gray-400">Total Bills</p>
-					<p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{data.stats.totalBills}</p>
-				</div>
-				<div class="min-w-[280px] snap-center shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
-					<p class="text-sm text-gray-500 dark:text-gray-400">Unpaid</p>
-					<p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{data.stats.unpaidBills}</p>
-				</div>
-				<div class="min-w-[280px] snap-center shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
-					<p class="text-sm text-gray-500 dark:text-gray-400">Overdue</p>
-					<p class="mt-1 text-2xl font-semibold text-red-600 dark:text-red-400">{data.stats.overdueBills}</p>
-				</div>
-			</div>
-
-			<!-- Desktop: Grid -->
-			<div class="hidden md:grid md:gap-4 md:grid-cols-2 lg:grid-cols-3">
-				<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
-					<p class="text-sm text-gray-500 dark:text-gray-400">Total Bills</p>
-					<p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{data.stats.totalBills}</p>
-				</div>
-				<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
-					<p class="text-sm text-gray-500 dark:text-gray-400">Unpaid</p>
-					<p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{data.stats.unpaidBills}</p>
-				</div>
-				<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
-					<p class="text-sm text-gray-500 dark:text-gray-400">Overdue</p>
-					<p class="mt-1 text-2xl font-semibold text-red-600 dark:text-red-400">{data.stats.overdueBills}</p>
-				</div>
-			</div>
-		</div>
-
-		<!-- Filters and Actions -->
-		<div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
-			<!-- Mobile layout -->
-			<div class="space-y-3 md:hidden">
-				<!-- Row 1: Search full width -->
-				<input
-					type="text"
-					bind:value={searchQuery}
-					placeholder="Search bills..."
-					class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 text-sm focus:border-blue-500 focus:ring-blue-500"
-				/>
-
-				<!-- Row 2: Status and Category filters -->
-				<div class="grid grid-cols-2 gap-2">
-					<select
-						bind:value={filterStatus}
-						class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-blue-500 focus:ring-blue-500"
-					>
-						<option value="all">All Bills</option>
-						<option value="unpaid">Unpaid</option>
-						<option value="paid">Paid</option>
-						<option value="overdue">Overdue</option>
-					</select>
-
-					<select
-						bind:value={filterCategory}
-						class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-blue-500 focus:ring-blue-500"
-					>
-						<option value={null}>All Categories</option>
-						<option value="uncategorized">Uncategorized</option>
-						{#each data.categories as category}
-							<option value={category.id}>{category.name}</option>
-						{/each}
-					</select>
-					<select
-						bind:value={filterAssetTag}
-						class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-blue-500 focus:ring-blue-500"
-					>
-						<option value={null}>All Assets</option>
-						<option value="none">Unknown Asset</option>
-						{#each data.assetTags as tag}
-							<option value={tag.id}>{tag.name}</option>
-						{/each}
-					</select>
-				</div>
-
-				<!-- Row 3: Sort controls -->
-				<div class="flex gap-2">
-					<select
-						bind:value={sortField}
-						class="flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-blue-500 focus:ring-blue-500"
-					>
-						<option value="assetTag">Sort: Asset Tag</option>
-						<option value="name">Sort: Name</option>
-					</select>
-
-					<button
-						onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
-						class="rounded-md border border-gray-300 px-3 min-w-11 min-h-11 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600"
-						title={sortDirection === 'asc' ? 'Ascending' : 'Descending'}
-					>
-						{#if sortDirection === 'asc'}
-							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-								/>
-							</svg>
-						{:else}
-							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"
-								/>
-							</svg>
-						{/if}
-					</button>
-				</div>
-
-				<!-- Row 4: Reset button if needed -->
-				{#if filterStatus !== 'all' || filterCategory !== null || filterAssetTag !== null || searchQuery}
-					<Button variant="secondary" fullWidth onclick={resetFilters}>
-						Reset Filters
-					</Button>
-				{/if}
-			</div>
-
-			<!-- Desktop layout -->
-			<div class="hidden md:flex md:flex-wrap md:items-center md:justify-between md:gap-4">
-				<div class="flex flex-wrap items-center gap-3">
-					<!-- Status Filter -->
-					<select
-						bind:value={filterStatus}
-						class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-blue-500 focus:ring-blue-500"
-					>
-						<option value="all">All Bills</option>
-						<option value="unpaid">Unpaid</option>
-						<option value="paid">Paid</option>
-						<option value="overdue">Overdue</option>
-					</select>
-
-					<!-- Category Filter -->
-					<select
-						bind:value={filterCategory}
-						class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-blue-500 focus:ring-blue-500"
-					>
-						<option value={null}>All Categories</option>
-						<option value="uncategorized">Uncategorized</option>
-						{#each data.categories as category}
-							<option value={category.id}>{category.name}</option>
-						{/each}
-					</select>
-
-					<!-- Asset Tag Filter -->
-					<select
-						bind:value={filterAssetTag}
-						class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-blue-500 focus:ring-blue-500"
-					>
-						<option value={null}>All Assets</option>
-						<option value="none">Unknown Asset</option>
-						{#each data.assetTags as tag}
-							<option value={tag.id}>{tag.name}</option>
-						{/each}
-					</select>
-
-					<!-- Search -->
+	<!-- Filters and Actions -->
+	<div class="mb-6 rounded-3xl border border-gray-200/80 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-gray-700/80 dark:bg-gray-800/85 sm:p-5">
+		<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+			<div class="flex-1 space-y-4">
+				<div class="relative">
+					<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 dark:text-gray-500">
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="m21 21-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
+							/>
+						</svg>
+					</div>
 					<input
 						type="text"
 						bind:value={searchQuery}
-						placeholder="Search bills..."
-						class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 text-sm focus:border-blue-500 focus:ring-blue-500"
+						placeholder="Search bills or notes"
+						class="w-full rounded-2xl border border-gray-200 bg-gray-50/80 py-3 pl-11 pr-4 text-sm text-gray-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-blue-500 dark:focus:bg-gray-900 dark:focus:ring-blue-950/60"
 					/>
-
-					<!-- Sort -->
-					<select
-						bind:value={sortField}
-						class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-blue-500 focus:ring-blue-500"
-					>
-						<option value="assetTag">Sort by Asset Tag</option>
-						<option value="name">Sort by Name</option>
-					</select>
-
-					<Button
-						variant="secondary"
-						size="sm"
-						onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
-						title={sortDirection === 'asc' ? 'Ascending' : 'Descending'}
-					>
-						{#if sortDirection === 'asc'}
-							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-								/>
-							</svg>
-						{:else}
-							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"
-								/>
-							</svg>
-						{/if}
-					</Button>
-
-					{#if filterStatus !== 'all' || filterCategory !== null || filterAssetTag !== null || searchQuery}
-						<Button variant="ghost" size="sm" onclick={resetFilters}>
-							Reset filters
-						</Button>
-					{/if}
 				</div>
 
-				<!-- Desktop Add Bill button -->
+				<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+					<label class="space-y-1.5">
+						<span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+							Status
+						</span>
+						<select
+							bind:value={filterStatus}
+							class="w-full rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-100 dark:focus:border-blue-500 dark:focus:bg-gray-900 dark:focus:ring-blue-950/60"
+						>
+							<option value="all">All Bills</option>
+							<option value="unpaid">Unpaid</option>
+							<option value="paid">Paid</option>
+							<option value="overdue">Overdue</option>
+						</select>
+					</label>
+
+					<label class="space-y-1.5">
+						<span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+							Category
+						</span>
+						<select
+							bind:value={filterCategory}
+							class="w-full rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-100 dark:focus:border-blue-500 dark:focus:bg-gray-900 dark:focus:ring-blue-950/60"
+						>
+							<option value={null}>All Categories</option>
+							<option value="uncategorized">Uncategorized</option>
+							{#each data.categories as category}
+								<option value={category.id}>{category.name}</option>
+							{/each}
+						</select>
+					</label>
+
+					<label class="space-y-1.5">
+						<span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+							Asset
+						</span>
+						<select
+							bind:value={filterAssetTag}
+							class="w-full rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-100 dark:focus:border-blue-500 dark:focus:bg-gray-900 dark:focus:ring-blue-950/60"
+						>
+							<option value={null}>All Assets</option>
+							<option value="none">Unknown Asset</option>
+							{#each data.assetTags as tag}
+								<option value={tag.id}>{tag.name}</option>
+							{/each}
+						</select>
+					</label>
+
+					<label class="space-y-1.5">
+						<span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+							Sort
+						</span>
+						<div class="flex gap-2">
+							<select
+								bind:value={sortField}
+								class="min-w-0 flex-1 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-100 dark:focus:border-blue-500 dark:focus:bg-gray-900 dark:focus:ring-blue-950/60"
+							>
+								<option value="assetTag">Asset Tag</option>
+								<option value="name">Name</option>
+							</select>
+							<button
+								type="button"
+								onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+								class="inline-flex min-h-[48px] min-w-[48px] items-center justify-center rounded-2xl border border-gray-200 bg-gray-50/80 text-gray-600 transition hover:border-gray-300 hover:bg-white hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-900 dark:hover:text-gray-100"
+								title={sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+							>
+								{#if sortDirection === 'asc'}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+										/>
+									</svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"
+										/>
+									</svg>
+								{/if}
+							</button>
+						</div>
+					</label>
+				</div>
+
+				<div class="flex flex-wrap items-center gap-3">
+					{#if hasActiveFilters}
+						<button
+							type="button"
+							onclick={resetFilters}
+							class="inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:border-gray-300 hover:bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+						>
+							Reset filters
+						</button>
+					{/if}
+					<p class="text-sm text-gray-500 dark:text-gray-400">
+						Showing {filteredBills.length} of {data.bills.length} bills
+					</p>
+				</div>
+			</div>
+
+			<div class="hidden md:block">
 				<Button variant="primary" size="md" onclick={() => (showAddModal = true)}>
 					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -498,6 +415,7 @@ import { endOfDay } from 'date-fns';
 				</Button>
 			</div>
 		</div>
+	</div>
 
 		<!-- Mobile FAB for Add Bill -->
 		<FloatingActionButton onclick={() => (showAddModal = true)} title="Add Bill">
@@ -549,10 +467,6 @@ import { endOfDay } from 'date-fns';
 					<BillCard {bill} onTogglePaid={handleTogglePaid} onEdit={handleEdit} onDelete={handleDelete} />
 				{/each}
 			</div>
-
-		<div class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-			Showing {filteredBills.length} of {data.bills.length} bills
-		</div>
 	{/if}
 </div>
 
