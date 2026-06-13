@@ -1,14 +1,14 @@
 services:
-  billzzz:
-    image: ghcr.io/jiyuw/billzzz:latest
+  billtrack:
+    image: ghcr.io/jiyuw/billtrack:latest
     pull_policy: always
-    container_name: billzzz
+    container_name: billtrack
     restart: unless-stopped
     ports:
       - "3333:3333"
     volumes:
       # Persist SQLite database
-      - /mnt/user/appdata/billzzz:/app/data
+      - /mnt/user/appdata/billtrack:/app/data
     user: "1000:1000"  # Run as UID 1000 (typical first user on Linux)
     environment:
       - NODE_ENV=production

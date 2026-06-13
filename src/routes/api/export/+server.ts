@@ -29,7 +29,7 @@ export const GET: RequestHandler = async () => {
 		};
 
 		// Create filename with timestamp
-		const filename = `billzzz-backup-${new Date().toISOString().split('T')[0]}.json`;
+		const filename = `billtrack-backup-${new Date().toISOString().split('T')[0]}.json`;
 
 		// Return as downloadable JSON file
 		return new Response(JSON.stringify(exportData, null, 2), {

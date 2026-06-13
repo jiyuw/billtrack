@@ -25,7 +25,7 @@
 </script>
 
 <svelte:head>
-	<title>Add New Bill - Billzzz</title>
+	<title>Add New Bill - BillTrack</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">

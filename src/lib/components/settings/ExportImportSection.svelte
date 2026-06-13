@@ -199,7 +199,7 @@
 						<ul class="list-disc pl-5 space-y-1">
 							<li>Importing will <strong>replace all existing data</strong></li>
 							<li>Make sure to export your current data before importing</li>
-							<li>The import file must be a valid JSON backup file from Billzzz</li>
+							<li>The import file must be a valid JSON backup file from BillTrack</li>
 						</ul>
 					</div>
 				</div>

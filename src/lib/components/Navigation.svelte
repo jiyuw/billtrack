@@ -20,7 +20,7 @@
 				<div class="flex items-center gap-6">
 					<a href="/" class="group flex items-center gap-2">
 						<img src={favicon} alt="" class="h-7 w-7" />
-						<p class="text-lg font-semibold text-gray-900 transition-colors group-hover:text-gray-700 dark:text-gray-100 dark:group-hover:text-gray-300">Billzzz</p>
+						<p class="text-lg font-semibold text-gray-900 transition-colors group-hover:text-gray-700 dark:text-gray-100 dark:group-hover:text-gray-300">BillTrack</p>
 					</a>
 
 					<div class="hidden items-center gap-2 lg:flex">

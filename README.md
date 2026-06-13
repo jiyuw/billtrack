@@ -1,4 +1,4 @@
-# Billzzz - Personal Finance Management
+# BillTrack - Personal Finance Management
 
 A comprehensive personal finance management application built with SvelteKit 5, SQLite, and Tailwind CSS. Track bills, manage spending buckets, analyze debt payoff strategies, and forecast your cash flow all in one place.
 
@@ -113,17 +113,17 @@ A comprehensive personal finance management application built with SvelteKit 5, 
 
 This repository is designed to publish a production image to GitHub Container Registry on every push to `main`.
 
-- Image: `ghcr.io/jiyuw/billzzz:latest`
-- Stable branch tag: `ghcr.io/jiyuw/billzzz:main`
-- Immutable build tags: `ghcr.io/jiyuw/billzzz:sha-<commit>`
-- Release tags: `ghcr.io/jiyuw/billzzz:v<version>` and `ghcr.io/jiyuw/billzzz:<major>.<minor>`
+- Image: `ghcr.io/jiyuw/billtrack:latest`
+- Stable branch tag: `ghcr.io/jiyuw/billtrack:main`
+- Immutable build tags: `ghcr.io/jiyuw/billtrack:sha-<commit>`
+- Release tags: `ghcr.io/jiyuw/billtrack:v<version>` and `ghcr.io/jiyuw/billtrack:<major>.<minor>`
 
 For Dockhand or any other GitOps-style deploy tool, prefer **pulling the published image** instead of syncing the repo and rebuilding locally.
 
 Recommended Dockhand flow:
 
-1. For testing the newest `main`, point your app at `ghcr.io/jiyuw/billzzz:latest`
-2. For a stable deployment, pin to a release tag such as `ghcr.io/jiyuw/billzzz:v1.0.0`
+1. For testing the newest `main`, point your app at `ghcr.io/jiyuw/billtrack:latest`
+2. For a stable deployment, pin to a release tag such as `ghcr.io/jiyuw/billtrack:v1.0.0`
 3. Enable image pull / refresh on update
 4. Recreate the container after pulling a new image
 5. Keep `/app/data` mounted so the SQLite database persists across deploys
@@ -143,7 +143,7 @@ Simple release flow:
 1. Update `package.json` version to the release you want, such as `1.1.0`
 2. Commit and push `main`
 3. Create and push a matching tag: `git tag v1.1.0 && git push origin v1.1.0`
-4. Wait for GitHub Actions to publish `ghcr.io/jiyuw/billzzz:v1.1.0`
+4. Wait for GitHub Actions to publish `ghcr.io/jiyuw/billtrack:v1.1.0`
 5. In Dockhand, change your stack image to that exact tag and redeploy
 
 Recommended rules:
@@ -165,7 +165,7 @@ docker compose up -d
 3. View logs:
 
 ```bash
-docker logs billzzz
+docker logs billtrack
 ```
 
 4. Stop the container:
@@ -179,17 +179,17 @@ docker compose down
 1. Pull the image:
 
 ```bash
-docker pull ghcr.io/jiyuw/billzzz:latest
+docker pull ghcr.io/jiyuw/billtrack:latest
 ```
 
 2. Run the container:
 
 ```bash
 docker run -d \
-  --name billzzz \
+  --name billtrack \
   -p 3000:3000 \
   -v $(pwd)/data:/app/data \
-  ghcr.io/jiyuw/billzzz:latest
+  ghcr.io/jiyuw/billtrack:latest
 ```
 
 ### Building Locally
@@ -197,8 +197,8 @@ docker run -d \
 If you want to build the image yourself instead of using GHCR:
 
 ```bash
-docker build -t billzzz:local .
-docker run -d --name billzzz -p 3000:3000 -v $(pwd)/data:/app/data billzzz:local
+docker build -t billtrack:local .
+docker run -d --name billtrack -p 3000:3000 -v $(pwd)/data:/app/data billtrack:local
 ```
 
 ### Data Persistence

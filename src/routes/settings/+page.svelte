@@ -400,7 +400,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings - Billzzz</title>
+	<title>Settings - BillTrack</title>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -410,7 +410,7 @@
 			<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
 		</div>
 		<p class="mt-2 text-gray-600 dark:text-gray-400">
-			Control how Billzzz looks, how bills are organized, and how your data is protected.
+			Control how BillTrack looks, how bills are organized, and how your data is protected.
 		</p>
 	</div>
 
@@ -420,7 +420,7 @@
 				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Appearance</p>
 				<h2 class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">How the app feels</h2>
 				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-					Set the visual mode you want Billzzz to use across the app.
+					Set the visual mode you want BillTrack to use across the app.
 				</p>
 			</div>
 			<div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-5 dark:border-gray-700 dark:bg-gray-900/30">
