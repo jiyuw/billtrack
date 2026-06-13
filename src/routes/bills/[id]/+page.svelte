@@ -7,6 +7,7 @@
 	import { format } from 'date-fns';
 	import {
 		ArrowLeft,
+		AlertTriangle,
 		Calendar,
 		DollarSign,
 		TrendingUp,
@@ -140,6 +141,10 @@
 		return expectedAmount > 0 ? Math.min((totalPaid / expectedAmount) * 100, 100) : 0;
 	}
 
+	const focusDueDate = $derived(
+		focusCycle?.dueDate ?? focusCycle?.endDate ?? bill.currentCycle?.dueDate ?? bill.currentCycle?.endDate ?? bill.dueDate
+	);
+
 	const isCyclePaid = $derived.by(() => {
 		const cycle = focusCycle ?? currentCycle;
 		if (!cycle) return false;
@@ -157,6 +162,35 @@
 			dueDate: focusCycle?.dueDate ?? focusCycle?.endDate ?? bill.dueDate
 		})
 	);
+	const cycleRemaining = $derived.by(() => {
+		if (!focusCycle || bill.isVariable) return null;
+		return Math.max(focusCycle.expectedAmount - focusCycle.totalPaid, 0);
+	});
+	const currentCycleAlert = $derived.by(() => {
+		if (!focusCycle) return null;
+		if (cyclePaymentStatus === 'overdue') {
+			return {
+				tone: 'red',
+				title: 'Payment overdue',
+				message: `This cycle was due ${format(focusDueDate, 'MMM d, yyyy')} and still needs attention.`
+			};
+		}
+		if (cyclePaymentStatus === 'partial' && !bill.isVariable) {
+			return {
+				tone: 'yellow',
+				title: 'Partial payment recorded',
+				message: `${formatCurrency(cycleRemaining ?? 0)} remains in this cycle.`
+			};
+		}
+		if (bill.isVariable && focusCycle.totalPaid > 0) {
+			return {
+				tone: 'green',
+				title: 'Payment recorded',
+				message: `Latest payment for this cycle is ${formatCurrency(focusCycle.totalPaid)}.`
+			};
+		}
+		return null;
+	});
 
 	let showEditModal = $state(false);
 	let showPaymentModal = $state(false);
@@ -305,7 +339,7 @@
 
 <div class="container mx-auto px-4 py-8 max-w-6xl">
 	<!-- Header -->
-	<div class="mb-6">
+	<div class="mb-8">
 		<button
 			onclick={() => goto('/')}
 			class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4 cursor-pointer"
@@ -314,238 +348,290 @@
 			Back to Bills
 		</button>
 
-		<div class="flex items-start justify-between gap-4">
-			<div class="flex-1">
-				<div class="flex flex-wrap items-center gap-3">
-					<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{bill.name}</h1>
-					<StatusIndicator
-						dueDate={(focusCycle ?? bill.currentCycle)?.dueDate ?? (focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate}
-						isPaid={isCyclePaid}
-					/>
-					<StatusBadge status={bill.isRecurring ? 'recurring' : 'one-time'} />
-					<StatusBadge status={bill.isAutopay ? 'autopay' : 'manual'} />
-					<StatusBadge status={bill.isVariable ? 'variable' : 'fixed'} />
-				</div>
-				<p class="text-gray-600 dark:text-gray-400 mt-1">
-					{#if bill.isRecurring}
-						Recurring {getRecurrenceDescription(bill.recurrenceInterval ?? 1, bill.recurrenceUnit ?? 'month', bill.recurrenceDay)} • Due {format((focusCycle ?? bill.currentCycle)?.dueDate ?? (focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate, 'MMM d, yyyy')}
-					{:else}
-						One-time bill • Due {format((focusCycle ?? bill.currentCycle)?.dueDate ?? (focusCycle ?? bill.currentCycle)?.endDate ?? bill.dueDate, 'MMM d, yyyy')}
-					{/if}
-				</p>
-				{#if bill.notes}
-					<div class="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-300/70 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-800 dark:border-slate-700/50 dark:bg-slate-800/60 dark:text-slate-200">
-						<Info size={14} class="shrink-0" />
-						<p class="italic whitespace-pre-wrap break-words">{bill.notes}</p>
-					</div>
-				{/if}
-				<div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-					<div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-						<p class="text-xs text-gray-500 dark:text-gray-400">Autopay</p>
-						<p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-							{#if bill.isAutopay}
-								On
-								{#if bill.paymentMethod}
-									<span class="text-xs text-gray-500 dark:text-gray-400">
-										• {bill.paymentMethod.nickname} •••• {bill.paymentMethod.lastFour}
-									</span>
-								{/if}
+		<div class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+			<div class="border-b border-gray-200/80 bg-gradient-to-r from-white via-slate-50 to-blue-50/70 px-6 py-6 dark:border-gray-700 dark:from-gray-800 dark:via-gray-800 dark:to-blue-950/20">
+				<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+					<div class="flex-1">
+						<div class="flex flex-wrap items-center gap-3">
+							<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{bill.name}</h1>
+							<StatusIndicator dueDate={focusDueDate} isPaid={isCyclePaid} />
+						</div>
+						<div class="mt-3 flex flex-wrap items-center gap-2">
+							<StatusBadge status={bill.isRecurring ? 'recurring' : 'one-time'} />
+							<StatusBadge status={bill.isAutopay ? 'autopay' : 'manual'} />
+							<StatusBadge status={bill.isVariable ? 'variable' : 'fixed'} />
+						</div>
+						<p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+							{#if bill.isRecurring}
+								Recurring {getRecurrenceDescription(bill.recurrenceInterval ?? 1, bill.recurrenceUnit ?? 'month', bill.recurrenceDay)} • Due {format(focusDueDate, 'MMM d, yyyy')}
 							{:else}
-								Off
+								One-time bill • Due {format(focusDueDate, 'MMM d, yyyy')}
 							{/if}
 						</p>
-					</div>
-
-					<div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-						<p class="text-xs text-gray-500 dark:text-gray-400">Category</p>
-						{#if bill.category}
-							<div class="mt-1 flex items-center gap-2">
-									{#if CategoryIcon}
-										<CategoryIcon size={16} style="color: {bill.category.color}" />
-									{:else if bill.category.icon}
-										<span class="text-sm" style="color: {bill.category.color}">{bill.category.icon}</span>
-									{/if}
-								<p class="text-sm font-medium" style="color: {bill.category.color}">
-									{bill.category.name}
-								</p>
+						{#if bill.notes}
+							<div class="mt-4 inline-flex max-w-full items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">
+								<Info size={15} class="mt-0.5 shrink-0" />
+								<p class="whitespace-pre-wrap break-words italic">{bill.notes}</p>
 							</div>
-						{:else}
-							<p class="text-sm font-medium text-gray-900 dark:text-gray-100">Uncategorized</p>
 						{/if}
 					</div>
 
-					<div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-						<p class="text-xs text-gray-500 dark:text-gray-400">Asset Tag</p>
-						{#if bill.assetTag}
-							<div
-								class="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white"
-								style={getAssetTagBannerStyle(bill.assetTag.color, bill.assetTag.bannerPattern)}
+					<div class="flex flex-wrap items-center gap-2 lg:justify-end">
+						<button
+							onclick={handleTogglePaid}
+							class="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-gray-200 bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-black dark:border-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white cursor-pointer"
+							title={isCyclePaid ? 'Mark as unpaid' : 'Mark as paid'}
+						>
+							{#if isCyclePaid}
+								<svg
+									class="h-4 w-4"
+									viewBox="0 0 20 20"
+									xmlns="http://www.w3.org/2000/svg"
+									aria-hidden="true"
+								>
+									<circle cx="10" cy="10" r="8" fill="currentColor" class="text-green-500" />
+									<path
+										d="M6.5 10.5l2 2 5-5"
+										fill="none"
+										stroke="#ffffff"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+								<span>Mark Unpaid</span>
+							{:else}
+								<svg
+									class="h-4 w-4"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+									/>
+								</svg>
+								<span>Add Payment</span>
+							{/if}
+						</button>
+						{#if bill.paymentLink}
+							<a
+								href={bill.paymentLink}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950"
+								title="Pay bill"
 							>
-								{#if AssetIcon}
-									<AssetIcon size={14} />
-								{:else}
-									<Info size={14} />
-								{/if}
-								<p class="truncate">{bill.assetTag.name}</p>
-							</div>
-						{:else}
-							<p class="text-sm font-medium text-gray-900 dark:text-gray-100">None</p>
+								<svg
+									class="h-4 w-4"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+									/>
+								</svg>
+								<span>Open Payment Link</span>
+							</a>
 						{/if}
+						<button
+							onclick={() => (showEditModal = true)}
+							class="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-950 cursor-pointer"
+							title="Edit bill"
+						>
+							<svg
+								class="h-4 w-4"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+								/>
+							</svg>
+							<span>Edit</span>
+						</button>
+						<button
+							onclick={handleDelete}
+							class="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:border-red-300 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950 cursor-pointer"
+							title="Delete bill"
+						>
+							<svg
+								class="h-4 w-4"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+								/>
+							</svg>
+							<span>Delete</span>
+						</button>
 					</div>
 				</div>
 			</div>
-			<div class="flex items-center gap-3">
-				<button
-					onclick={handleTogglePaid}
-					class="rounded-md p-2 min-h-9 min-w-9 transition-all text-gray-500 hover:bg-gray-100 hover:text-gray-700 hover:scale-105 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-300 cursor-pointer"
-					title={isCyclePaid ? 'Paid' : 'Mark as paid'}
-				>
-					{#if isCyclePaid}
-						<svg
-							class="h-6 w-6"
-							viewBox="0 0 20 20"
-							xmlns="http://www.w3.org/2000/svg"
-							aria-hidden="true"
-						>
-							<circle cx="10" cy="10" r="8" fill="#16a34a" />
-							<path
-								d="M6.5 10.5l2 2 5-5"
-								fill="none"
-								stroke="#ffffff"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
-						</svg>
+
+			<div class="grid gap-3 px-6 py-5 sm:grid-cols-2 xl:grid-cols-4">
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Current Due</p>
+					<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{format(focusDueDate, 'MMM d, yyyy')}</p>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Anchor for the current billing cycle</p>
+				</div>
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Autopay</p>
+					<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+						{#if bill.isAutopay}On{:else}Off{/if}
+					</p>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						{#if bill.paymentMethod}
+							{bill.paymentMethod.nickname} •••• {bill.paymentMethod.lastFour}
+						{:else if bill.isAutopay}
+							Payment method not linked
+						{:else}
+							Paid manually
+						{/if}
+					</p>
+				</div>
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Category</p>
+					{#if bill.category}
+						<div class="mt-2 flex items-center gap-2">
+							{#if CategoryIcon}
+								<CategoryIcon size={16} style="color: {bill.category.color}" />
+							{:else if bill.category.icon}
+								<span class="text-sm" style="color: {bill.category.color}">{bill.category.icon}</span>
+							{/if}
+							<p class="text-lg font-semibold" style="color: {bill.category.color}">
+								{bill.category.name}
+							</p>
+						</div>
 					{:else}
-						<svg
-							class="h-6 w-6"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-							/>
-						</svg>
+						<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">Uncategorized</p>
 					{/if}
-				</button>
-
-				{#if bill.paymentLink}
-					<a
-						href={bill.paymentLink}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="rounded-md p-2 min-h-9 min-w-9 flex items-center justify-center text-gray-500 transition-all hover:bg-blue-50 hover:text-blue-600 hover:scale-105 dark:text-gray-400 dark:hover:bg-blue-950 dark:hover:text-blue-400 cursor-pointer"
-						title="Pay bill"
-					>
-						<svg
-							class="h-6 w-6"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
+				</div>
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Asset Tag</p>
+					{#if bill.assetTag}
+						<div
+							class="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm font-medium text-white"
+							style={getAssetTagBannerStyle(bill.assetTag.color, bill.assetTag.bannerPattern)}
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-							/>
-						</svg>
-					</a>
-				{/if}
-
-				<button
-					onclick={() => (showEditModal = true)}
-					class="rounded-md p-2 min-h-9 min-w-9 text-gray-500 transition-all hover:bg-blue-50 hover:text-blue-600 hover:scale-105 dark:text-gray-400 dark:hover:bg-blue-950 dark:hover:text-blue-400 cursor-pointer"
-					title="Edit bill"
-				>
-					<svg
-						class="h-6 w-6"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-						/>
-					</svg>
-				</button>
-
-				<button
-					onclick={handleDelete}
-					class="rounded-md p-2 min-h-9 min-w-9 text-gray-500 transition-all hover:bg-red-50 hover:text-red-600 hover:scale-105 dark:text-gray-400 dark:hover:bg-red-950 dark:hover:text-red-400 cursor-pointer"
-					title="Delete bill"
-				>
-					<svg
-						class="h-6 w-6"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-						/>
-					</svg>
-				</button>
+							{#if AssetIcon}
+								<AssetIcon size={14} />
+							{:else}
+								<Info size={14} />
+							{/if}
+							<p class="truncate">{bill.assetTag.name}</p>
+						</div>
+					{:else}
+						<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">None</p>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
 
 	<!-- Current Cycle Card -->
 	{#if focusCycle}
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-			<div class="flex items-center gap-2 mb-4">
-				<Calendar class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Current Cycle</h2>
+		<div class="mb-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+			<div class="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+				<div>
+					<div class="flex items-center gap-2">
+						<Calendar class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+						<h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Current Cycle</h2>
+					</div>
+					<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+						This is the cycle that matters most right now for this bill.
+					</p>
+				</div>
+				<StatusBadge
+					status={cyclePaymentStatus}
+					size="md"
+					label={cyclePaymentStatus === 'partial'
+						? `Partial • ${getProgressPercentage(focusCycle.totalPaid, focusCycle.expectedAmount).toFixed(0)}%`
+						: undefined}
+				/>
 			</div>
 
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-				<div>
-					<p class="text-sm text-gray-600 dark:text-gray-400">Period</p>
-					<p class="text-lg font-medium text-gray-900 dark:text-gray-100">
+			{#if currentCycleAlert}
+				<div class={`mb-5 flex items-start gap-3 rounded-2xl border px-4 py-3 ${
+					currentCycleAlert.tone === 'red'
+						? 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200'
+						: currentCycleAlert.tone === 'yellow'
+							? 'border-yellow-200 bg-yellow-50 text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200'
+							: 'border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200'
+				}`}>
+					<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
+					<div>
+						<p class="text-sm font-semibold">{currentCycleAlert.title}</p>
+						<p class="mt-1 text-sm opacity-90">{currentCycleAlert.message}</p>
+					</div>
+				</div>
+			{/if}
+
+			<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Period</p>
+					<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
 						{format(focusCycle.startDate, 'MMM d')} - {format(focusCycle.endDate, 'MMM d, yyyy')}
 					</p>
 				</div>
-				<div>
-					<p class="text-sm text-gray-600 dark:text-gray-400">Total Paid</p>
-					<p class="text-lg font-medium text-gray-900 dark:text-gray-100">
-						{bill.isVariable && focusCycle.totalPaid === 0
-							? 'Unpaid'
-							: formatCurrency(focusCycle.totalPaid)}
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Due Date</p>
+					<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{format(focusDueDate, 'MMM d, yyyy')}</p>
+				</div>
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Paid So Far</p>
+					<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+						{bill.isVariable && focusCycle.totalPaid === 0 ? 'Unpaid' : formatCurrency(focusCycle.totalPaid)}
 					</p>
 				</div>
-				{#if !bill.isVariable}
-					<div>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Expected Amount</p>
-						<p class="text-lg font-medium text-gray-900 dark:text-gray-100">
-							{formatCurrency(focusCycle.expectedAmount)}
-						</p>
-					</div>
-				{/if}
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+						{bill.isVariable ? 'Payment Pattern' : 'Remaining'}
+					</p>
+					<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+						{#if bill.isVariable}
+							Usage-based
+						{:else}
+							{formatCurrency(cycleRemaining ?? 0)}
+						{/if}
+					</p>
+				</div>
 			</div>
 
 			{#if !bill.isVariable}
-				<!-- Progress Bar -->
-				<div class="mb-2">
-					<div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-						<span>Progress</span>
-						<span>{focusCycle.percentPaid.toFixed(0)}%</span>
+				<div class="mt-5 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/20">
+					<div class="mb-3 flex items-center justify-between gap-3">
+						<div>
+							<p class="text-sm font-medium text-gray-900 dark:text-gray-100">Cycle Progress</p>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								Expected {formatCurrency(focusCycle.expectedAmount)}
+							</p>
+						</div>
+						<p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+							{focusCycle.percentPaid.toFixed(0)}%
+						</p>
 					</div>
-					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+					<div class="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700">
 						<div
 							class="h-3 rounded-full transition-all {getProgressBarClass(cyclePaymentStatus)}"
 							style="width: {focusCycle.percentPaid}%"
@@ -554,40 +640,37 @@
 				</div>
 			{/if}
 
-			<!-- Current Cycle Payments -->
 			{#if paymentsByCycle[focusCycle.id]?.length > 0}
-				<div class="mt-4">
-					<h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+				<div class="mt-5 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/20">
+					<h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
 						Payments This Cycle
 					</h3>
 					<div class="space-y-2">
 						{#each paymentsByCycle[focusCycle.id] as payment}
 							<div
-								class="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded"
+								class="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/50 sm:flex-row sm:items-center sm:justify-between"
 							>
 								<div class="flex items-center gap-3">
-									<DollarSign class="w-4 h-4 text-green-600 dark:text-green-400" />
+									<DollarSign class="h-4 w-4 text-green-600 dark:text-green-400" />
 									<div>
-										<p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+										<p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
 											{formatCurrency(payment.amount)}
 										</p>
+										<p class="text-xs text-gray-500 dark:text-gray-400">
+											{format(payment.paymentDate, 'MMM d, yyyy')}
+										</p>
 										{#if payment.notes}
-											<p class="text-xs text-gray-600 dark:text-gray-400">{payment.notes}</p>
+											<p class="mt-1 text-xs text-gray-600 dark:text-gray-400">{payment.notes}</p>
 										{/if}
 									</div>
 								</div>
-								<div class="flex items-center gap-3">
-									<p class="text-sm text-gray-600 dark:text-gray-400">
-										{format(payment.paymentDate, 'MMM d, yyyy')}
-									</p>
-									<button
-										type="button"
-										onclick={() => handleEditPayment(payment)}
-										class="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
-									>
-										Edit
-									</button>
-								</div>
+								<button
+									type="button"
+									onclick={() => handleEditPayment(payment)}
+									class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950 cursor-pointer"
+								>
+									Edit Payment
+								</button>
 							</div>
 						{/each}
 					</div>
@@ -595,7 +678,7 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+		<div class="mb-6 rounded-3xl border border-yellow-200 bg-yellow-50 p-5 dark:border-yellow-800 dark:bg-yellow-900/20">
 			<p class="text-sm text-yellow-800 dark:text-yellow-200">
 				No current billing cycle. Cycles will be generated automatically when payments are recorded.
 			</p>
@@ -604,11 +687,14 @@
 
 	<!-- Cycle History -->
 	{#if displayCycles.length > 0}
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-			<div class="flex items-center gap-2 mb-4">
+		<div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+			<div class="mb-4 flex items-center gap-2">
 				<TrendingUp class="w-5 h-5 text-purple-600 dark:text-purple-400" />
 				<h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Payment History</h2>
 			</div>
+			<p class="mb-5 text-sm text-gray-600 dark:text-gray-400">
+				Review recent cycles and drill into any payment you need to verify or edit.
+			</p>
 
 			{#if bill.isVariable && historyStats}
 				<div class="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -671,7 +757,7 @@
 						</select>
 					</div>
 
-					<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+					<div class="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
 						<div class="flex items-center justify-between mb-3">
 							<div>
 								<h3 class="font-medium text-gray-900 dark:text-gray-100">

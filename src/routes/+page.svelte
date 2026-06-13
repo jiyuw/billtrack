@@ -8,7 +8,8 @@
 	import FloatingActionButton from '$lib/components/FloatingActionButton.svelte';
 	import type { BillWithCategory, BillWithCycle } from '$lib/types/bill';
 	import { invalidateAll } from '$app/navigation';
-import { endOfDay } from 'date-fns';
+	import { endOfDay } from 'date-fns';
+	import { LayoutDashboard } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -267,7 +268,10 @@ import { endOfDay } from 'date-fns';
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 	<div class="mb-8">
 		<div>
-			<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Bills Dashboard</h1>
+			<div class="flex items-center gap-3">
+				<LayoutDashboard class="h-8 w-8 text-gray-900 dark:text-gray-100" />
+				<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Bills Dashboard</h1>
+			</div>
 			<p class="mt-2 text-gray-600 dark:text-gray-400 italic">I got bills, they're multiplying</p>
 		</div>
 	</div>

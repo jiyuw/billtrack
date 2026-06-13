@@ -64,6 +64,18 @@
 		const xMax = pointCount <= 1 ? 1.5 : pointCount === 2 ? maxCycle + 0.5 : maxCycle + 0.3;
 		const pointRadius = pointCount <= 2 ? 5 : 3.5;
 		const pointHoverRadius = pointCount <= 2 ? 7 : 5;
+		const yValues = chartPoints.map((point) => point.y);
+		const rawMinY = yValues.length > 0 ? Math.min(...yValues) : 0;
+		const rawMaxY = yValues.length > 0 ? Math.max(...yValues) : 0;
+		const yRange = rawMaxY - rawMinY;
+		const yPadding =
+			yValues.length === 0
+				? 1
+				: yRange === 0
+					? Math.max(rawMaxY * 0.25, 10)
+					: Math.max(yRange * 0.35, rawMaxY * 0.08, 5);
+		const yMin = Math.max(0, rawMinY - yPadding);
+		const yMax = rawMaxY + yPadding;
 
 		chart = new Chart(canvas, {
 			type: 'line',
@@ -126,7 +138,8 @@
 						}
 					},
 					y: {
-						beginAtZero: true,
+						min: yMin,
+						max: yMax,
 						grid: { color: 'rgba(0,0,0,0.06)' },
 						title: {
 							display: true,

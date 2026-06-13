@@ -127,9 +127,9 @@
 	}
 
 	const sectionClass =
-		'rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800/80';
+		'rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800/80';
 	const fieldClass =
-		'mt-1 block w-full rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+		'mt-1 block w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
 	const cycleSettingsChanged = $derived.by(() => {
 		if (!isEditing || !isRecurring) return false;
 
@@ -154,9 +154,10 @@
 <form onsubmit={handleSubmit} class="space-y-5">
 	<section class={sectionClass}>
 		<div class="mb-4">
-			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Basic Information</h3>
+			<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Basic Info</p>
+			<h3 class="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">What this bill is</h3>
 			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-				Name the bill and add the reference details you want to keep with it.
+				Name the bill and keep the reference details you want available later.
 			</p>
 		</div>
 
@@ -223,81 +224,126 @@
 
 	<section class={sectionClass}>
 		<div class="mb-4">
-			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Billing Information</h3>
+			<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Billing</p>
+			<h3 class="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">How this bill works</h3>
 			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-				Define the billing cadence, the current bill amount, and the latest known cycle window.
+				Set the bill type first, then define the amount and the latest cycle details if it repeats.
 			</p>
 		</div>
 
 		<div class="space-y-4">
-			<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-				<label class="flex items-start gap-3">
-					<input
-						type="checkbox"
-						id="isRecurring"
-						bind:checked={isRecurring}
-						class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
-					/>
-					<span>
-						<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Recurring bill</span>
-						<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
-							Use this when the bill repeats on a regular schedule.
-						</span>
-					</span>
-				</label>
-
-				{#if isRecurring}
-					<div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-						<label for="recurrenceInterval" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Recurrence
-						</label>
-						<div class="mt-1 grid gap-2 sm:grid-cols-[auto_6rem_minmax(0,12rem)] sm:items-center">
-							<span class="text-sm text-gray-600 dark:text-gray-400">Every</span>
-							<input
-								type="number"
-								id="recurrenceInterval"
-								min="1"
-								step="1"
-								bind:value={recurrenceInterval}
-								class="rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-							/>
-							<select
-								bind:value={recurrenceUnit}
-								class="rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-							>
-								<option value="day">Day(s)</option>
-								<option value="week">Week(s)</option>
-								<option value="month">Month(s)</option>
-								<option value="year">Year(s)</option>
-							</select>
-						</div>
-					</div>
-				{/if}
+			<div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+				<p class="text-sm font-medium text-gray-900 dark:text-gray-100">Bill type</p>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					Choose whether this bill happens once or repeats on a schedule.
+				</p>
+				<div class="mt-4 grid gap-3 md:grid-cols-2">
+					<button
+						type="button"
+						onclick={() => (isRecurring = false)}
+						class={`rounded-2xl border px-4 py-4 text-left transition ${
+							!isRecurring
+								? 'border-slate-900 bg-white shadow-sm dark:border-slate-200 dark:bg-gray-800'
+								: 'border-gray-200 bg-white/70 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-gray-600'
+						}`}
+					>
+						<p class="text-sm font-semibold text-gray-900 dark:text-gray-100">One-time bill</p>
+						<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							Track a single amount with one due date.
+						</p>
+					</button>
+					<button
+						type="button"
+						onclick={() => (isRecurring = true)}
+						class={`rounded-2xl border px-4 py-4 text-left transition ${
+							isRecurring
+								? 'border-blue-500 bg-blue-50 shadow-sm dark:border-blue-500 dark:bg-blue-950/30'
+								: 'border-gray-200 bg-white/70 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-gray-600'
+						}`}
+					>
+						<p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Recurring bill</p>
+						<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							Track a bill that repeats in billing cycles.
+						</p>
+					</button>
+				</div>
 			</div>
 
 			{#if isRecurring}
-				<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-					<label class="flex items-start gap-3">
+				<div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/40">
+					<p class="text-sm font-medium text-gray-900 dark:text-gray-100">Recurrence</p>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						How often a new cycle should be created.
+					</p>
+					<div class="mt-4 grid gap-2 sm:grid-cols-[auto_7rem_minmax(0,14rem)] sm:items-center">
+						<span class="text-sm text-gray-600 dark:text-gray-400">Every</span>
 						<input
-							type="checkbox"
-							id="isVariable"
-							bind:checked={isVariable}
-							class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+							type="number"
+							id="recurrenceInterval"
+							min="1"
+							step="1"
+							bind:value={recurrenceInterval}
+							class="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
 						/>
-						<span>
-							<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Variable amount</span>
-							<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
-								Use this when the amount changes each cycle.
-							</span>
-						</span>
-					</label>
+						<select
+							bind:value={recurrenceUnit}
+							class="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+						>
+							<option value="day">Day(s)</option>
+							<option value="week">Week(s)</option>
+							<option value="month">Month(s)</option>
+							<option value="year">Year(s)</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+					<p class="text-sm font-medium text-gray-900 dark:text-gray-100">Amount mode</p>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						Choose whether the amount is expected to stay fixed or change from cycle to cycle.
+					</p>
+					<div class="mt-4 grid gap-3 md:grid-cols-2">
+						<button
+							type="button"
+							onclick={() => (isVariable = false)}
+							class={`rounded-2xl border px-4 py-4 text-left transition ${
+								!isVariable
+									? 'border-slate-900 bg-white shadow-sm dark:border-slate-200 dark:bg-gray-800'
+									: 'border-gray-200 bg-white/70 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-gray-600'
+							}`}
+						>
+							<p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Fixed amount</p>
+							<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+								Use a standard amount for each cycle.
+							</p>
+						</button>
+						<button
+							type="button"
+							onclick={() => (isVariable = true)}
+							class={`rounded-2xl border px-4 py-4 text-left transition ${
+								isVariable
+									? 'border-orange-400 bg-orange-50 shadow-sm dark:border-orange-500 dark:bg-orange-950/20'
+									: 'border-gray-200 bg-white/70 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-gray-600'
+							}`}
+						>
+							<p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Variable amount</p>
+							<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+								Use payment history to capture the actual amount each cycle.
+							</p>
+						</button>
+					</div>
 
 					<div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-						<label for="amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Amount {#if !isVariable}<span class="text-red-500 dark:text-red-400">*</span>{/if}
-						</label>
-						<div class="relative mt-1">
-							<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+						<p class="text-sm font-medium text-gray-900 dark:text-gray-100">Amount</p>
+						<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							{#if isVariable}
+								Variable bills do not require a fixed amount up front.
+							{:else}
+								Set the standard amount you expect for each cycle.
+							{/if}
+						</p>
+						<div class="relative mt-4">
+							<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
 								<span class="text-gray-500 dark:text-gray-400">$</span>
 							</div>
 							<input
@@ -308,70 +354,73 @@
 								disabled={isVariable}
 								min="0"
 								step="0.01"
-								class={`${fieldClass} pl-7 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800`}
+								class={`${fieldClass} pl-8 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800`}
 								placeholder="0.00"
 							/>
 						</div>
-						{#if isVariable}
-							<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-								Variable bills rely on payment history for the real amount.
-							</p>
-						{/if}
 					</div>
 				</div>
 
-				<div class="grid gap-4 md:grid-cols-3">
-					<div>
-						<label for="cycleStartDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Most Recent Cycle Start <span class="text-red-500 dark:text-red-400">*</span>
-						</label>
-						<input
-							type="date"
-							id="cycleStartDate"
-							bind:value={cycleStartDate}
-							required={isRecurring}
-							class={fieldClass}
-						/>
-					</div>
-
-					<div>
-						<label for="cycleEndDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Most Recent Cycle End <span class="text-red-500 dark:text-red-400">*</span>
-						</label>
-						<input
-							type="date"
-							id="cycleEndDate"
-							bind:value={cycleEndDate}
-							required={isRecurring}
-							class={fieldClass}
-						/>
-					</div>
-
-					<div>
-						<label for="dueDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							This Cycle Due Date <span class="text-red-500 dark:text-red-400">*</span>
-						</label>
-						<input
-							type="date"
-							id="dueDate"
-							bind:value={dueDate}
-							required
-							class={fieldClass}
-						/>
-						<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-							Use the due date for the same cycle window above.
-						</p>
+				<div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/40">
+					<p class="text-sm font-medium text-gray-900 dark:text-gray-100">Latest cycle anchor</p>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						Use the most recent known cycle so future cycles can be calculated correctly.
+					</p>
+					<div class="mt-4 grid gap-4 md:grid-cols-3 md:items-start">
+						<div class="flex flex-col">
+							<label for="cycleStartDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+								Start Date <span class="text-red-500 dark:text-red-400">*</span>
+							</label>
+							<input
+								type="date"
+								id="cycleStartDate"
+								bind:value={cycleStartDate}
+								required={isRecurring}
+								class={fieldClass}
+							/>
+						</div>
+						<div class="flex flex-col">
+							<label for="cycleEndDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+								End Date <span class="text-red-500 dark:text-red-400">*</span>
+							</label>
+							<input
+								type="date"
+								id="cycleEndDate"
+								bind:value={cycleEndDate}
+								required={isRecurring}
+								class={fieldClass}
+							/>
+						</div>
+						<div class="flex flex-col">
+							<label for="dueDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+								Due Date <span class="text-red-500 dark:text-red-400">*</span>
+							</label>
+							<input
+								type="date"
+								id="dueDate"
+								bind:value={dueDate}
+								required
+								class={fieldClass}
+							/>
+							<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+								Use the due date for the same cycle above.
+							</p>
+						</div>
 					</div>
 				</div>
 			{:else}
-				<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+				<div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/40">
+					<p class="text-sm font-medium text-gray-900 dark:text-gray-100">One-time amount and due date</p>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						Set the amount and due date for this single bill.
+					</p>
 					<div class="grid gap-4 md:grid-cols-2">
 						<div>
 							<label for="amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
 								Amount <span class="text-red-500 dark:text-red-400">*</span>
 							</label>
 							<div class="relative mt-1">
-								<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+								<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
 									<span class="text-gray-500 dark:text-gray-400">$</span>
 								</div>
 								<input
@@ -381,7 +430,7 @@
 									required
 									min="0"
 									step="0.01"
-									class={`${fieldClass} pl-7`}
+									class={`${fieldClass} pl-8`}
 									placeholder="0.00"
 								/>
 							</div>
@@ -404,7 +453,7 @@
 			{/if}
 
 			{#if isEditing && isRecurring && cycleSettingsChanged}
-				<div class="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200 dark:border-amber-700 dark:bg-amber-950/40 dark:ring-amber-900">
+				<div class="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200 dark:border-amber-700 dark:bg-amber-950/40 dark:ring-amber-900">
 					<p class="text-sm font-medium text-amber-900 dark:text-amber-100">Cycle Recalculation</p>
 					<p class="mt-1 text-sm text-amber-800 dark:text-amber-200">
 						Choose whether this schedule change should affect only this cycle forward, or also rewrite historical cycles.
@@ -452,30 +501,53 @@
 
 	<section class={sectionClass}>
 		<div class="mb-4">
-			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Payment Information</h3>
+			<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Payment</p>
+			<h3 class="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">How you pay it</h3>
 			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-				Track whether this bill is on autopay and which payment method it uses.
+				Track whether this bill is automatic and which method should be associated with it.
 			</p>
 		</div>
 
 		<div class="space-y-4">
-			<label class="flex items-start gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-				<input
-					type="checkbox"
-					id="isAutopay"
-					bind:checked={isAutopay}
-					class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
-				/>
-				<span>
-					<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Autopay enabled</span>
-					<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
-						Attach a payment method if this bill is automatically paid.
-					</span>
-				</span>
-			</label>
+			<div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/30">
+				<p class="text-sm font-medium text-gray-900 dark:text-gray-100">Payment mode</p>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					Choose whether this bill pays itself or you handle it manually.
+				</p>
+				<div class="mt-4 grid gap-3 md:grid-cols-2">
+					<button
+						type="button"
+						onclick={() => (isAutopay = false)}
+						class={`rounded-2xl border px-4 py-4 text-left transition ${
+							!isAutopay
+								? 'border-slate-900 bg-white shadow-sm dark:border-slate-200 dark:bg-gray-800'
+								: 'border-gray-200 bg-white/70 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-gray-600'
+						}`}
+					>
+						<p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Manual payment</p>
+						<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							Record payments when you make them yourself.
+						</p>
+					</button>
+					<button
+						type="button"
+						onclick={() => (isAutopay = true)}
+						class={`rounded-2xl border px-4 py-4 text-left transition ${
+							isAutopay
+								? 'border-green-500 bg-green-50 shadow-sm dark:border-green-500 dark:bg-green-950/20'
+								: 'border-gray-200 bg-white/70 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-gray-600'
+						}`}
+					>
+						<p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Autopay enabled</p>
+						<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							Attach a payment method if this bill is automatically paid.
+						</p>
+					</button>
+				</div>
+			</div>
 
 			{#if isAutopay}
-				<div>
+				<div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/40">
 					<label for="paymentMethodId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
 						Payment Method
 					</label>

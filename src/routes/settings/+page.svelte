@@ -12,6 +12,7 @@
 	import PaymentMethodFormModal from '$lib/components/settings/PaymentMethodFormModal.svelte';
 	import ThemeSelector from '$lib/components/ThemeSelector.svelte';
 	import {
+		Settings,
 		Zap,
 		ShieldCheck,
 		Home,
@@ -393,6 +394,9 @@
 			alert('Failed to export data. Please try again.');
 		}
 	}
+
+	const groupClass =
+		'rounded-3xl border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800/85 sm:p-6';
 </script>
 
 <svelte:head>
@@ -400,41 +404,87 @@
 </svelte:head>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<div class="mb-8">
-		<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
-		<p class="mt-2 text-gray-600 dark:text-gray-400">Manage your categories and payment history</p>
+	<div class="mb-10">
+		<div class="flex items-center gap-3">
+			<Settings class="h-8 w-8 text-gray-900 dark:text-gray-100" />
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+		</div>
+		<p class="mt-2 text-gray-600 dark:text-gray-400">
+			Control how Billzzz looks, how bills are organized, and how your data is protected.
+		</p>
 	</div>
 
-	<div class="mb-8 rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-		<h2 class="mb-4 text-xl font-semibold text-gray-900 dark:text-gray-100">Appearance</h2>
-		<ThemeSelector />
+	<div class="space-y-8">
+		<section class={groupClass}>
+			<div class="mb-5">
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Appearance</p>
+				<h2 class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">How the app feels</h2>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					Set the visual mode you want Billzzz to use across the app.
+				</p>
+			</div>
+			<div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-5 dark:border-gray-700 dark:bg-gray-900/30">
+				<ThemeSelector />
+			</div>
+		</section>
+
+		<section class={groupClass}>
+			<div class="mb-5">
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Payment Setup</p>
+				<h2 class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">Autopay and funding sources</h2>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					Keep the payment methods that recurring bills can reference for autopay.
+				</p>
+			</div>
+			<PaymentMethodsSection
+				paymentMethods={data.paymentMethods}
+				onAdd={openAddPaymentMethodModal}
+				onEdit={openEditPaymentMethodModal}
+				onDelete={handleDeletePaymentMethod}
+			/>
+		</section>
+
+		<section class={groupClass}>
+			<div class="mb-5">
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Bill Metadata</p>
+				<h2 class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">How bills are labeled</h2>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					Manage the labels and groupings that help you organize bills in the dashboard and detail pages.
+				</p>
+			</div>
+			<div class="space-y-8">
+				<CategoriesSection
+					categories={data.categories}
+					{iconOptions}
+					onAdd={openAddCategoryModal}
+					onEdit={openEditCategoryModal}
+					onDelete={handleDeleteCategory}
+				/>
+
+				<AssetTagsSection
+					assetTags={data.assetTags}
+					onAdd={openAddAssetTagModal}
+					onEdit={openEditAssetTagModal}
+					onDelete={handleDeleteAssetTag}
+				/>
+			</div>
+		</section>
+
+		<section class={groupClass}>
+			<div class="mb-5">
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Data Management</p>
+				<h2 class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">Backup, restore, and reset</h2>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					Protect your data with exports, restore from backups when needed, and keep destructive tools isolated.
+				</p>
+			</div>
+			<div class="space-y-8">
+				<ExportImportSection onExport={handleExport} />
+
+				<ResetDataSection onReset={() => (showResetModal = true)} />
+			</div>
+		</section>
 	</div>
-
-	<CategoriesSection
-		categories={data.categories}
-		{iconOptions}
-		onAdd={openAddCategoryModal}
-		onEdit={openEditCategoryModal}
-		onDelete={handleDeleteCategory}
-	/>
-
-	<AssetTagsSection
-		assetTags={data.assetTags}
-		onAdd={openAddAssetTagModal}
-		onEdit={openEditAssetTagModal}
-		onDelete={handleDeleteAssetTag}
-	/>
-
-	<PaymentMethodsSection
-		paymentMethods={data.paymentMethods}
-		onAdd={openAddPaymentMethodModal}
-		onEdit={openEditPaymentMethodModal}
-		onDelete={handleDeletePaymentMethod}
-	/>
-
-	<ExportImportSection onExport={handleExport} />
-
-	<ResetDataSection onReset={() => (showResetModal = true)} />
 </div>
 
 <!-- Add Category Modal -->

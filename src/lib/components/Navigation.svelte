@@ -1,48 +1,65 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { LayoutDashboard, Settings, TrendingUp } from 'lucide-svelte';
+	import favicon from '$lib/assets/favicon.svg';
 
 	let { appVersion }: { appVersion: string } = $props();
 
 	const isActive = (path: string) => $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
+
+	const navItems = [
+		{ href: '/', label: 'Bills', icon: LayoutDashboard },
+		{ href: '/analytics', label: 'Analytics', icon: TrendingUp },
+		{ href: '/settings', label: 'Settings', icon: Settings }
+	];
 </script>
 
-<nav class="hidden border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 md:block">
+<nav class="sticky top-0 z-40 hidden border-b border-gray-200/80 bg-white/92 backdrop-blur dark:border-gray-700/80 dark:bg-gray-800/92 md:block">
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-		<div class="flex h-16 items-center justify-between">
-			<div class="flex items-center gap-8">
-				<a href="/" class="text-xl font-bold text-gray-900 dark:text-gray-100">Billzzz</a>
+		<div class="flex min-h-[76px] items-center justify-between gap-6 py-4">
+				<div class="flex items-center gap-6">
+					<a href="/" class="group flex items-center gap-2">
+						<img src={favicon} alt="" class="h-7 w-7" />
+						<p class="text-lg font-semibold text-gray-900 transition-colors group-hover:text-gray-700 dark:text-gray-100 dark:group-hover:text-gray-300">Billzzz</p>
+					</a>
 
-				<div class="flex gap-4">
-					<a
-						href="/"
-						class="rounded-md px-3 py-2 text-sm font-medium transition-colors {isActive('/')
-							? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
-							: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}"
-					>
-						Bills
-					</a>
-					<a
-						href="/analytics"
-						class="rounded-md px-3 py-2 text-sm font-medium transition-colors {isActive('/analytics')
-							? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
-							: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}"
-					>
-						Analytics
-					</a>
-					<a
-						href="/settings"
-						class="rounded-md px-3 py-2 text-sm font-medium transition-colors {isActive('/settings')
-							? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
-							: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}"
-					>
-						Settings
-					</a>
+					<div class="hidden items-center gap-2 lg:flex">
+						{#each navItems as item}
+							<a
+								href={item.href}
+								class={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+									isActive(item.href)
+										? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100'
+										: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100'
+								}`}
+							>
+								<item.icon class="h-4 w-4" />
+								<span>{item.label}</span>
+							</a>
+						{/each}
+					</div>
 				</div>
-			</div>
 
-			<div class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold tracking-wide text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
-				v{appVersion}
-			</div>
+				<div class="flex items-center gap-3">
+					<div class="hidden px-1 text-sm font-semibold tracking-[0.08em] text-gray-400 dark:text-gray-500 sm:block">
+						v{appVersion}
+					</div>
+					<div class="flex items-center gap-1 lg:hidden">
+						{#each navItems as item}
+							<a
+								href={item.href}
+								class={`inline-flex h-10 w-10 items-center justify-center rounded-xl transition ${
+									isActive(item.href)
+										? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100'
+										: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100'
+								}`}
+								title={item.label}
+							>
+								<item.icon class="h-4 w-4" />
+							</a>
+						{/each}
+					</div>
+				</div>
 		</div>
 	</div>
 </nav>
