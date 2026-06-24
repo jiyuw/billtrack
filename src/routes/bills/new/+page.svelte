@@ -4,8 +4,10 @@
 	import { goto } from '$app/navigation';
 
 	let { data }: { data: PageData } = $props();
+	let submitError = $state('');
 
 	async function handleSubmit(billData: any) {
+		submitError = '';
 		const response = await fetch('/api/bills', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -15,7 +17,8 @@
 		if (response.ok) {
 			goto('/');
 		} else {
-			alert('Failed to create bill. Please try again.');
+			const result = await response.json().catch(() => null);
+			submitError = result?.error || 'Failed to create bill. Please try again.';
 		}
 	}
 
@@ -52,6 +55,11 @@
 
 		<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
 			<h1 class="mb-6 text-2xl font-bold text-gray-900 dark:text-gray-100">Add New Bill</h1>
+			{#if submitError}
+				<div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+					{submitError}
+				</div>
+			{/if}
 			<BillForm
 				categories={data.categories}
 				assetTags={data.assetTags}

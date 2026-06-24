@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db/index';
 import { formatDateForInput } from '$lib/utils/dates';
+import { createRequestLogger } from '$lib/server/api-logger';
 import {
 	bills,
 	billCycles,
@@ -12,7 +13,8 @@ import {
 	userPreferences
 } from '$lib/server/db/schema';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async (event) => {
+	const logger = createRequestLogger(event, 'export.generate');
 	try {
 		// Export all data
 		const exportData = {
@@ -30,7 +32,20 @@ export const GET: RequestHandler = async () => {
 		};
 
 		// Create filename with timestamp
-		const filename = `billtrack-backup-${formatDateForInput(new Date())}.json`; 
+		const filename = `billtrack-backup-${formatDateForInput(new Date())}.json`;
+
+		logger.audit('success', {
+			filename,
+			counts: {
+				categories: exportData.data.categories.length,
+				assetTags: exportData.data.assetTags.length,
+				bills: exportData.data.bills.length,
+				billCycles: exportData.data.billCycles.length,
+				billPayments: exportData.data.billPayments.length,
+				paymentMethods: exportData.data.paymentMethods.length,
+				userPreferences: exportData.data.userPreferences.length
+			}
+		});
 
 		// Return as downloadable JSON file
 		return new Response(JSON.stringify(exportData, null, 2), {
@@ -40,7 +55,7 @@ export const GET: RequestHandler = async () => {
 			}
 		});
 	} catch (error) {
-		console.error('Export error:', error);
+		logger.error('error', { error });
 		return json({ error: 'Failed to export data' }, { status: 500 });
 	}
 };

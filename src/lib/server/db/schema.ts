@@ -111,6 +111,23 @@ export const billPayments = sqliteTable('bill_payments', {
 		.default(sql`(unixepoch())`),
 	updatedAt: integer('updated_at', { mode: 'timestamp' })
 		.notNull()
+	.default(sql`(unixepoch())`)
+});
+
+export const activityLogs = sqliteTable('activity_logs', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	level: text('level').notNull(),
+	event: text('event').notNull(),
+	logType: text('log_type').notNull().default('activity'),
+	requestId: text('request_id'),
+	method: text('method'),
+	path: text('path'),
+	routeId: text('route_id'),
+	entityType: text('entity_type'),
+	entityId: text('entity_id'),
+	details: text('details'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
 		.default(sql`(unixepoch())`)
 });
 
@@ -132,6 +149,9 @@ export type NewBillCycle = typeof billCycles.$inferInsert;
 
 export type BillPayment = typeof billPayments.$inferSelect;
 export type NewBillPayment = typeof billPayments.$inferInsert;
+
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type NewActivityLog = typeof activityLogs.$inferInsert;
 
 // User preferences - stores app settings like theme preference
 export const userPreferences = sqliteTable('user_preferences', {

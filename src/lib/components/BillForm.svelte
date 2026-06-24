@@ -99,11 +99,22 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		const effectiveCycleStartDate = isRecurring ? cycleStartDate : dueDate;
+		const effectiveCycleEndDate = isRecurring ? cycleEndDate : dueDate;
+
+		if (isRecurring && effectiveCycleStartDate > effectiveCycleEndDate) {
+			alert('Cycle start date must be on or before cycle end date.');
+			return;
+		}
+
+		if (isAutopay && paymentMethodId === null) {
+			alert('Select a payment method before enabling autopay.');
+			return;
+		}
+
 		isSubmitting = true;
 
 		try {
-			const effectiveCycleStartDate = isRecurring ? cycleStartDate : dueDate;
-			const effectiveCycleEndDate = isRecurring ? cycleEndDate : dueDate;
 
 			await onSubmit({
 				name,

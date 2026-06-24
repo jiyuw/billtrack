@@ -49,7 +49,10 @@
 	const displayCycles = $derived.by(() => cycles.filter((cycle) => cycle.totalPaid > 0));
 	const historyStats = $derived.by(() => {
 		if (displayCycles.length === 0) return null;
-		const values = displayCycles.map((cycle) => cycle.totalPaid);
+		const paidCyclesByDate = [...displayCycles].sort(
+			(a, b) => a.startDate.getTime() - b.startDate.getTime()
+		);
+		const values = paidCyclesByDate.map((cycle) => cycle.totalPaid);
 		const total = values.reduce((sum, value) => sum + value, 0);
 		const average = total / values.length;
 		const min = Math.min(...values);

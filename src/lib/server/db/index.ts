@@ -231,6 +231,29 @@ function initializeDatabase() {
 		console.log('Added banner_pattern column to asset_tags table');
 	}
 
+	const activityLogsTableExists = sqlite
+		.prepare("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name='activity_logs'")
+		.get() as { count: number };
+	if (activityLogsTableExists.count === 0) {
+		sqlite.exec(`
+			CREATE TABLE activity_logs (
+				id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+				level TEXT NOT NULL,
+				event TEXT NOT NULL,
+				log_type TEXT NOT NULL DEFAULT 'activity',
+				request_id TEXT,
+				method TEXT,
+				path TEXT,
+				route_id TEXT,
+				entity_type TEXT,
+				entity_id TEXT,
+				details TEXT,
+				created_at INTEGER NOT NULL DEFAULT (unixepoch())
+			)
+		`);
+		console.log('Created activity_logs table');
+	}
+
 	// Drop legacy tables from removed features
 	const legacyTables = [
 		'imported_transactions',

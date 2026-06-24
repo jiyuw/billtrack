@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { LayoutDashboard, Settings, TrendingUp } from 'lucide-svelte';
+	import { Activity, LayoutDashboard, Settings, TrendingUp } from 'lucide-svelte';
 	import favicon from '$lib/assets/favicon.svg';
 
 	let { appVersion }: { appVersion: string } = $props();
@@ -10,6 +10,7 @@
 	const navItems = [
 		{ href: '/', label: 'Bills', icon: LayoutDashboard },
 		{ href: '/analytics', label: 'Analytics', icon: TrendingUp },
+		{ href: '/activity', label: 'Activity', icon: Activity },
 		{ href: '/settings', label: 'Settings', icon: Settings }
 	];
 </script>

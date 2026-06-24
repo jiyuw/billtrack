@@ -5,6 +5,24 @@ All notable changes to this project should be documented in this file.
 The format is intentionally simple and release-focused so it can double as GitHub release notes.
 
 
+## [1.4.0] - 2026-06-24
+
+### Added
+
+- Added a persistent activity logging system with request IDs, structured server events, audit-focused activity storage, and a new Activity page in the main navigation for reviewing recent warnings, errors, and business events.
+
+### Changed
+
+- Simplified automatic payment notes so recorded payments no longer append the original amount by default.
+- Improved bill creation and editing feedback with clearer validation handling, richer backend request logging, and in-page error messaging for failed bill creation.
+- Corrected payment history stats so the `Last` amount is based on the most recent paid cycle instead of the oldest returned cycle.
+
+### Notes
+
+- Release tag: `v1.4.0`
+- App version: `1.4.0`
+
+
 ## [1.3.0] - 2026-06-24
 
 ### Fixed

@@ -2,6 +2,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { getAllCategories, getAllPaymentMethods, getAllAssetTags } from '$lib/server/db/queries';
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
+import { createRequestLogger } from '$lib/server/api-logger';
 import {
 	bills,
 	billCycles,
@@ -59,34 +60,37 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	importData: async ({ request }) => {
+	importData: async (event) => {
+		const logger = createRequestLogger(event, 'settings.import');
 		try {
-			console.log('Import request received');
+			const { request } = event;
+			logger.info('request');
 			const formData = await request.formData();
 			const file = formData.get('file') as File;
 
 			if (!file) {
-				console.log('No file in form data');
+				logger.warn('validation_failed', { reason: 'missing_file' });
 				return fail(400, { error: 'No file provided' });
 			}
 
-			console.log('File received:', file.name, file.size);
+			logger.info('file_received', { fileName: file.name, fileSize: file.size });
 
 			// Read and parse the JSON file
 			const content = await file.text();
-			console.log('File content length:', content.length);
+			logger.info('file_read', { contentLength: content.length });
 			let importData: ImportData;
 
 			try {
 				importData = JSON.parse(content);
-				console.log('JSON parsed successfully');
+				logger.info('json_parsed', { version: importData.version });
 			} catch (error) {
-				console.error('JSON parse error:', error);
+				logger.warn('validation_failed', { reason: 'invalid_json', error });
 				return fail(400, { error: 'Invalid JSON file' });
 			}
 
 			// Validate the data structure
 			if (!importData.version || !importData.data) {
+				logger.warn('validation_failed', { reason: 'invalid_backup_format' });
 				return fail(400, { error: 'Invalid backup file format' });
 			}
 
@@ -155,7 +159,7 @@ export const actions: Actions = {
 				importedCounts.userPreferences = importUserPreferences.length;
 			}
 
-			console.log('Import successful:', importedCounts);
+			logger.audit('success', { importedCounts });
 
 			return {
 				success: true,
@@ -163,20 +167,23 @@ export const actions: Actions = {
 				imported: importedCounts
 			};
 		} catch (error) {
-			console.error('Import error:', error);
+			logger.error('error', { error });
 			return fail(500, {
 				error: `Failed to import data: ${error instanceof Error ? error.message : 'Unknown error'}`
 			});
 		}
 	},
 
-	resetData: async ({ request }) => {
+	resetData: async (event) => {
+		const logger = createRequestLogger(event, 'settings.reset');
 		try {
+			const { request } = event;
 			const formData = await request.formData();
 			const confirmation = formData.get('confirmation');
 
 			// Require explicit confirmation
 			if (confirmation !== 'DELETE ALL DATA') {
+				logger.warn('validation_failed', { reason: 'invalid_confirmation' });
 				return fail(400, { error: 'Invalid confirmation. Please type "DELETE ALL DATA" exactly.' });
 			}
 
@@ -192,14 +199,14 @@ export const actions: Actions = {
 			// Reset SQLite autoincrement sequences to start fresh
 			db.run('DELETE FROM sqlite_sequence');
 
-			console.log('All data has been reset');
+			logger.audit('success', { confirmation });
 
 			return {
 				success: true,
 				message: 'All data has been deleted successfully'
 			};
 		} catch (error) {
-			console.error('Reset error:', error);
+			logger.error('error', { error });
 			return fail(500, {
 				error: `Failed to reset data: ${error instanceof Error ? error.message : 'Unknown error'}`
 			});
