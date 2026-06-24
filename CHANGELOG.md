@@ -5,6 +5,24 @@ All notable changes to this project should be documented in this file.
 The format is intentionally simple and release-focused so it can double as GitHub release notes.
 
 
+## [1.4.1] - 2026-06-24
+
+### Fixed
+
+- Fixed recurring cycle regeneration so bills with due dates earlier than cycle end dates no longer create duplicate cycles on each load.
+- Fixed current-cycle resolution for edited recurring bills so paid variable-cycle payments are no longer hidden behind duplicate unpaid cycles.
+- Deduplicated repeated cycle choices in the payment modal and added server-side cleanup to merge duplicate cycles back into a single canonical cycle.
+
+### Changed
+
+- Added an optional post-publish Dockhand deploy webhook step to the Docker publish workflow, with README guidance for GHCR-driven auto-update setups.
+
+### Notes
+
+- Release tag: `v1.4.1`
+- App version: `1.4.1`
+
+
 ## [1.4.0] - 2026-06-24
 
 ### Added

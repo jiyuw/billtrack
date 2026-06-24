@@ -28,6 +28,7 @@ export async function getBillWithCurrentCycle(id: number): Promise<BillWithCycle
 	if (!bill) return undefined;
 
 	await ensureCyclesExist(bill);
+	await dedupeCyclesForBill(bill);
 
 	const currentCycle = await getCurrentCycle(bill.id);
 	const focusCycle = await getFocusCycleForBill(bill.id);
@@ -52,6 +53,7 @@ export async function getAllBillsWithCurrentCycle(): Promise<BillWithCycle[]> {
 	const billsWithCycles = await Promise.all(
 		allBills.map(async (bill) => {
 			await ensureCyclesExist(bill);
+			await dedupeCyclesForBill(bill);
 			const currentCycle = await getCurrentCycle(bill.id);
 			const focusCycle = await getFocusCycleForBill(bill.id);
 			const usageStats = bill.isVariable ? await getBillUsageStats(bill.id) : null;
@@ -115,9 +117,10 @@ export async function getCurrentCycle(billId: number): Promise<BillCycle | undef
 				and(
 					eq(billCycles.billId, billId),
 					sql`${billCycles.startDate} <= ${nowTimestamp}`,
-					sql`${cycleDueDateSql} >= ${nowTimestamp}`
+					sql`${billCycles.endDate} >= ${nowTimestamp}`
 				)
 			)
+		.orderBy(desc(billCycles.startDate), desc(billCycles.id))
 		.limit(1);
 
 	return result[0];
@@ -127,11 +130,17 @@ export async function getCurrentCycle(billId: number): Promise<BillCycle | undef
  * Get all cycles for a bill
  */
 export async function getCyclesForBill(billId: number): Promise<BillCycle[]> {
+	const { getBillById } = await import('./queries');
+	const bill = getBillById(billId);
+	if (bill) {
+		await dedupeCyclesForBill(bill);
+	}
+
 	return db
 		.select()
 		.from(billCycles)
 		.where(eq(billCycles.billId, billId))
-		.orderBy(desc(cycleDueDateSql));
+		.orderBy(desc(billCycles.startDate), desc(billCycles.id));
 }
 
 /**
@@ -213,8 +222,8 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 		const latest = latestCycle[0];
 
 		// If current cycle exists, we're done
-		const latestDueDate = latest.dueDate ?? latest.endDate;
-		if (isAfter(latestDueDate, now) || latestDueDate.getTime() === now.getTime()) {
+		const latestCycleEndDate = latest.endDate;
+		if (isAfter(latestCycleEndDate, now) || latestCycleEndDate.getTime() === now.getTime()) {
 			return;
 		}
 
@@ -226,7 +235,7 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 		// Start from the next cycle after the latest
 		const nextCycleDates = calculateBillCycleDates(
 			bill,
-			new Date(latestDueDate.getTime() + 24 * 60 * 60 * 1000)
+			new Date(latestCycleEndDate.getTime() + 24 * 60 * 60 * 1000)
 		);
 		startFrom = nextCycleDates.startDate;
 	}
@@ -244,6 +253,82 @@ async function ensureCyclesExist(bill: Bill): Promise<void> {
 			totalPaid: 0,
 			isPaid: false
 		});
+	}
+}
+
+async function dedupeCyclesForBill(bill: Bill): Promise<void> {
+	const cycles = await db
+		.select()
+		.from(billCycles)
+		.where(eq(billCycles.billId, bill.id))
+		.orderBy(asc(billCycles.startDate), asc(billCycles.id));
+
+	if (cycles.length < 2) return;
+
+	const payments = await db
+		.select({
+			id: billPayments.id,
+			cycleId: billPayments.cycleId
+		})
+		.from(billPayments)
+		.where(eq(billPayments.billId, bill.id));
+
+	const paymentCountByCycle = new Map<number, number>();
+	for (const payment of payments) {
+		paymentCountByCycle.set(
+			payment.cycleId,
+			(paymentCountByCycle.get(payment.cycleId) ?? 0) + 1
+		);
+	}
+
+	const groups = new Map<string, BillCycle[]>();
+	for (const cycle of cycles) {
+		const key = [
+			cycle.startDate.getTime(),
+			cycle.endDate.getTime(),
+			(cycle.dueDate ?? cycle.endDate).getTime()
+		].join(':');
+
+		if (!groups.has(key)) {
+			groups.set(key, []);
+		}
+		groups.get(key)?.push(cycle);
+	}
+
+	let earliestAffectedStartDate: Date | null = null;
+
+	for (const group of groups.values()) {
+		if (group.length < 2) continue;
+
+		const [keeper, ...duplicates] = [...group].sort((a, b) => {
+			const paymentCountDiff =
+				(paymentCountByCycle.get(b.id) ?? 0) - (paymentCountByCycle.get(a.id) ?? 0);
+			if (paymentCountDiff !== 0) return paymentCountDiff;
+			if (b.totalPaid !== a.totalPaid) return b.totalPaid - a.totalPaid;
+			if (a.isPaid !== b.isPaid) return Number(b.isPaid) - Number(a.isPaid);
+			return a.id - b.id;
+		});
+
+		const duplicateIds = duplicates.map((cycle) => cycle.id);
+		if (duplicateIds.length === 0) continue;
+
+		if (!earliestAffectedStartDate || keeper.startDate < earliestAffectedStartDate) {
+			earliestAffectedStartDate = keeper.startDate;
+		}
+
+		await db
+			.update(billPayments)
+			.set({
+				cycleId: keeper.id,
+				updatedAt: new Date()
+			})
+			.where(inArray(billPayments.cycleId, duplicateIds));
+
+		await db.delete(billCycles).where(inArray(billCycles.id, duplicateIds));
+	}
+
+	if (earliestAffectedStartDate) {
+		await recalculateCyclesFrom(bill, earliestAffectedStartDate);
 	}
 }
 

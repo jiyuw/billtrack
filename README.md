@@ -130,6 +130,34 @@ Recommended Dockhand flow:
 
 This is more reliable than GitHub repo sync for this app, because the running container serves the built SvelteKit output, not the raw repository contents.
 
+### Triggering Dockhand automatically after GitHub publishes a new image
+
+The safest automation path is:
+
+1. Push to `main` or push a `v*` tag
+2. GitHub Actions publishes the new image to GHCR
+3. GitHub Actions calls your Dockhand deploy webhook
+4. Dockhand pulls the new image and recreates the container
+
+This repository already supports step 3 through the workflow in `.github/workflows/docker-publish.yml`.
+
+To enable it:
+
+1. In Dockhand, open the app or stack for BillTrack and copy its deploy / redeploy webhook URL
+2. In GitHub, go to `Settings -> Secrets and variables -> Actions`
+3. Add a new repository secret named `DOCKHAND_DEPLOY_WEBHOOK_URL`
+4. Paste the full Dockhand webhook URL as the secret value
+5. In Dockhand, make sure the app is configured to use `ghcr.io/jiyuw/billtrack:latest` for rolling `main` deploys, or `ghcr.io/jiyuw/billtrack:v<version>` for release-pinned deploys
+6. Make sure Dockhand is set to pull the image again and recreate the container when its webhook is triggered
+
+Why use GitHub Actions instead of a raw GitHub push webhook:
+
+- A raw push webhook can fire before GHCR finishes publishing the image
+- That race can make Dockhand redeploy the old image
+- The workflow-triggered webhook runs only after the image build and push step succeeds
+
+If you want predictable production updates, point Dockhand at a release tag like `ghcr.io/jiyuw/billtrack:v1.4.0` and push a matching git tag when you're ready to deploy.
+
 ### Release Versioning
 
 Use `package.json` as the app's version source, and use Git tags to publish deployable releases.

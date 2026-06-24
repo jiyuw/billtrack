@@ -40,11 +40,39 @@
 	const isEditing = $derived(existingPayment !== null);
 
 	function normalizeCycles(input: BillCycle[]): BillCycle[] {
-		return input.map((cycle) => ({
+		const normalized = input.map((cycle) => ({
 			...cycle,
 			startDate: cycle.startDate instanceof Date ? cycle.startDate : new Date(cycle.startDate),
 			endDate: cycle.endDate instanceof Date ? cycle.endDate : new Date(cycle.endDate)
 		}));
+
+		const groups = new Map<string, BillCycle[]>();
+		for (const cycle of normalized) {
+			const dueDate =
+				cycle.dueDate instanceof Date
+					? cycle.dueDate
+					: cycle.dueDate
+						? new Date(cycle.dueDate)
+						: cycle.endDate;
+			const key = [
+				cycle.startDate.getTime(),
+				cycle.endDate.getTime(),
+				dueDate.getTime()
+			].join(':');
+
+			if (!groups.has(key)) {
+				groups.set(key, []);
+			}
+			groups.get(key)?.push(cycle);
+		}
+
+		return [...groups.values()].map((group) =>
+			[...group].sort((a, b) => {
+				if (a.isPaid !== b.isPaid) return Number(b.isPaid) - Number(a.isPaid);
+				if (a.totalPaid !== b.totalPaid) return b.totalPaid - a.totalPaid;
+				return a.id - b.id;
+			})[0]
+		);
 	}
 
 	// Update amount when bill changes
