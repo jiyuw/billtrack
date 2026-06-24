@@ -5,6 +5,20 @@ All notable changes to this project should be documented in this file.
 The format is intentionally simple and release-focused so it can double as GitHub release notes.
 
 
+## [1.3.0] - 2026-06-24
+
+### Fixed
+
+- Audited date handling across bill forms, payment entry, bill detail history, and related API fallbacks so date-only values now stay aligned with the user-selected calendar day across time zones.
+- Fixed payment history and payment editing flows that could display or refill payment dates one day early on devices west of UTC.
+- Tightened the Bills dashboard card header spacing and simplified recurring/autopay indicators with a lighter inline legend.
+
+### Notes
+
+- Release tag: `v1.3.0`
+- App version: `1.3.0`
+
+
 ## [1.2.2] - 2026-06-24
 
 ### Fixed

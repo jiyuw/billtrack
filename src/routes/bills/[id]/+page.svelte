@@ -5,6 +5,7 @@
 	import { getRecurrenceDescription } from '$lib/utils/recurrence';
 	import { getAssetTagBannerStyle } from '$lib/utils/asset-tag-banner';
 	import { format } from 'date-fns';
+	import { formatStoredDate } from '$lib/utils/dates';
 	import {
 		ArrowLeft,
 		AlertTriangle,
@@ -76,7 +77,7 @@
 			const cyclePayments = paymentsByCycle[cycle.id] ?? [];
 			const paymentDates = cyclePayments.length > 0
 				? cyclePayments
-						.map((payment) => format(payment.paymentDate, 'MMM d, yyyy'))
+						.map((payment) => formatStoredDate(payment.paymentDate))
 						.join(', ')
 				: 'No payment date';
 
@@ -85,7 +86,7 @@
 				y: cycle.totalPaid,
 				meta: {
 					cycleNumber: index + 1,
-					cyclePeriod: `${format(cycle.startDate, 'MMM d, yyyy')} - ${format(cycle.endDate, 'MMM d, yyyy')}`,
+					cyclePeriod: `${formatStoredDate(cycle.startDate)} - ${format(cycle.endDate, 'MMM d, yyyy')}`,
 					paymentDates,
 					amountLabel: formatCurrency(cycle.totalPaid)
 				}
@@ -98,7 +99,7 @@
 			.sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
 			.map((cycle) => ({
 				id: cycle.id,
-				label: `${format(cycle.startDate, 'MMM d, yyyy')} - ${format(cycle.endDate, 'MMM d, yyyy')}`
+				label: `${formatStoredDate(cycle.startDate)} - ${format(cycle.endDate, 'MMM d, yyyy')}`
 			}))
 	);
 
@@ -132,7 +133,7 @@
 	});
 
 	function getCycleName(cycle: typeof cycles[0]) {
-		const start = format(cycle.startDate, 'MMM d, yyyy');
+		const start = formatStoredDate(cycle.startDate);
 		const end = format(cycle.endDate, 'MMM d, yyyy');
 		return `${start} - ${end}`;
 	}
@@ -591,7 +592,7 @@
 				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/30">
 					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Period</p>
 					<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
-						{format(focusCycle.startDate, 'MMM d')} - {format(focusCycle.endDate, 'MMM d, yyyy')}
+						{formatStoredDate(focusCycle.startDate, 'MMM d')} - {format(focusCycle.endDate, 'MMM d, yyyy')}
 					</p>
 				</div>
 				<div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/30">
@@ -657,7 +658,7 @@
 											{formatCurrency(payment.amount)}
 										</p>
 										<p class="text-xs text-gray-500 dark:text-gray-400">
-											{format(payment.paymentDate, 'MMM d, yyyy')}
+											{formatStoredDate(payment.paymentDate)}
 										</p>
 										{#if payment.notes}
 											<p class="mt-1 text-xs text-gray-600 dark:text-gray-400">{payment.notes}</p>
@@ -796,7 +797,7 @@
 									{#each selectedHistoryPayments as payment}
 										<div class="flex items-center justify-between gap-3 text-sm">
 											<span class="min-w-0 text-gray-600 dark:text-gray-400">
-												{format(payment.paymentDate, 'MMM d, yyyy')}
+												{formatStoredDate(payment.paymentDate)}
 												{#if payment.notes}
 													<span class="text-xs">• {payment.notes}</span>
 												{/if}

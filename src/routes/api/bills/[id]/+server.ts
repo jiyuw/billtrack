@@ -8,7 +8,7 @@ import {
 	getFocusCycleForBill,
 	rebuildCurrentAndFutureCycles
 } from '$lib/server/db/bill-queries';
-import { normalizeDateForStorage } from '$lib/utils/dates';
+import { formatDateForInput, normalizeDateForStorage } from '$lib/utils/dates';
 
 // GET /api/bills/[id] - Get a single bill
 export const GET: RequestHandler = async ({ params }) => {
@@ -180,7 +180,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 			const note = paymentNotes?.trim() || autoNote;
 			const parsedPaymentDate = paymentDate
 				? normalizeDateForStorage(paymentDate, { kind: 'date', boundary: 'start' })
-				: new Date();
+				: normalizeDateForStorage(formatDateForInput(new Date()), { kind: 'date', boundary: 'start' });
 			const cycleId = paymentCycleId ? parseInt(paymentCycleId) : null;
 			if (cycleId) {
 				await createPaymentForCycle(

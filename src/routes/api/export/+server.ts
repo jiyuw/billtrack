@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db/index';
+import { formatDateForInput } from '$lib/utils/dates';
 import {
 	bills,
 	billCycles,
@@ -29,7 +30,7 @@ export const GET: RequestHandler = async () => {
 		};
 
 		// Create filename with timestamp
-		const filename = `billtrack-backup-${new Date().toISOString().split('T')[0]}.json`;
+		const filename = `billtrack-backup-${formatDateForInput(new Date())}.json`; 
 
 		// Return as downloadable JSON file
 		return new Response(JSON.stringify(exportData, null, 2), {

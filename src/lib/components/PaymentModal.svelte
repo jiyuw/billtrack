@@ -4,6 +4,7 @@
 	import type { BillWithCategory } from '$lib/types/bill';
 	import type { BillCycle, BillPayment } from '$lib/server/db/schema';
 	import { format, endOfDay } from 'date-fns';
+	import { formatDateForInput, formatStoredDate, formatStoredDateForInput } from '$lib/utils/dates';
 
 	interface Props {
 		isOpen: boolean;
@@ -52,18 +53,14 @@
 
 		if (existingPayment) {
 			amount = existingPayment.amount;
-			paymentDate = format(existingPayment.paymentDate, 'yyyy-MM-dd');
+			paymentDate = formatStoredDateForInput(existingPayment.paymentDate);
 			notes = existingPayment.notes ?? '';
 			selectedCycleId = existingPayment.cycleId;
 			return;
 		}
 
 		amount = bill.amount;
-		const today = new Date();
-		const year = today.getFullYear();
-		const month = String(today.getMonth() + 1).padStart(2, '0');
-		const day = String(today.getDate()).padStart(2, '0');
-		paymentDate = `${year}-${month}-${day}`;
+		paymentDate = formatDateForInput(new Date());
 		notes = '';
 	});
 
@@ -134,7 +131,7 @@
 					>
 						{#each availableCycles as cycle}
 							<option value={cycle.id}>
-								{format(cycle.startDate, 'MMM d, yyyy')} – {format(cycle.endDate, 'MMM d, yyyy')}
+								{formatStoredDate(cycle.startDate)} – {format(cycle.endDate, 'MMM d, yyyy')}
 								{cycle.isPaid ? ' (Paid)' : ''}
 							</option>
 						{/each}

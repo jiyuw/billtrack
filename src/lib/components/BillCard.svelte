@@ -179,7 +179,7 @@
 					<HelpCircle size={17} />
 				</div>
 			{/if}
-			<div class="flex min-w-0 flex-wrap items-center gap-2">
+			<div class="flex min-w-0 flex-wrap items-center gap-2.5">
 				<h3 class="max-w-full truncate text-lg font-semibold text-gray-900 dark:text-gray-100">{bill.name}</h3>
 				{#if bill.isRecurring}
 					<StatusBadge

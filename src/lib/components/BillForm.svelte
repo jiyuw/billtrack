@@ -4,7 +4,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import type { PaymentMethod } from '$lib/server/db/schema';
 	import type { AssetTag } from '$lib/server/db/schema';
-	import { formatDateForInput } from '$lib/utils/dates';
+	import { formatDateForInput, formatStoredDateForInput } from '$lib/utils/dates';
 
 	interface Props {
 		categories: Category[];
@@ -66,15 +66,19 @@
 
 	$effect(() => {
 		const initialDueDate = initialData?.dueDate ?? new Date();
-		const initialCycleStartDate = initialData?.cycleStartDate ?? initialDueDate;
+		const initialCycleStartDate = initialData?.cycleStartDate;
 		const initialCycleEndDate = initialData?.cycleEndDate ?? initialDueDate;
 
 		name = initialData?.name || '';
 		amount = initialData?.amount || 0;
 		dueDate = formatDateForInput(initialDueDate);
-		cycleStartDate = formatDateForInput(initialCycleStartDate);
+		cycleStartDate = initialCycleStartDate
+			? formatStoredDateForInput(initialCycleStartDate)
+			: formatDateForInput(initialDueDate);
 		cycleEndDate = formatDateForInput(initialCycleEndDate);
-		rebuildFromCycleStartDate = formatDateForInput(initialCycleStartDate);
+		rebuildFromCycleStartDate = initialCycleStartDate
+			? formatStoredDateForInput(initialCycleStartDate)
+			: formatDateForInput(initialDueDate);
 		paymentLink = initialData?.paymentLink || '';
 		categoryId = initialData?.categoryId || null;
 		assetTagId = initialData?.assetTagId || null;
@@ -134,7 +138,9 @@
 		if (!isEditing || !isRecurring) return false;
 
 		const initialDueDate = formatDateForInput(initialData?.dueDate ?? new Date());
-		const initialCycleStartDate = formatDateForInput(initialData?.cycleStartDate ?? initialData?.dueDate ?? new Date());
+		const initialCycleStartDate = initialData?.cycleStartDate
+			? formatStoredDateForInput(initialData.cycleStartDate)
+			: formatDateForInput(initialData?.dueDate ?? new Date());
 		const initialCycleEndDate = formatDateForInput(initialData?.cycleEndDate ?? initialData?.dueDate ?? new Date());
 		const initialIsRecurring = initialData?.isRecurring ?? false;
 		const initialRecurrenceInterval = initialData?.recurrenceInterval ?? 1;

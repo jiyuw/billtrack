@@ -128,6 +128,26 @@ export function formatDateForInput(date: Date): string {
 }
 
 /**
+ * Formats a stored start-boundary date-only value by reconstructing its calendar day before display.
+ * Use this for values like payment dates or cycle start dates that should preserve the chosen day.
+ */
+export function formatStoredDate(date: Date, pattern = 'MMM d, yyyy'): string {
+	const normalized = new Date(
+		date.getUTCFullYear(),
+		date.getUTCMonth(),
+		date.getUTCDate()
+	);
+	return format(normalized, pattern);
+}
+
+/**
+ * Formats a stored start-boundary date-only value for a date input.
+ */
+export function formatStoredDateForInput(date: Date): string {
+	return formatStoredDate(date, 'yyyy-MM-dd');
+}
+
+/**
  * Formats a Date for use in a datetime-local input using the current device timezone.
  */
 export function formatDateTimeForInput(date: Date): string {

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getPaymentsForBill, createPayment } from '$lib/server/db/bill-queries';
-import { normalizeDateForStorage } from '$lib/utils/dates';
+import { formatDateForInput, normalizeDateForStorage } from '$lib/utils/dates';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {
@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			amount: parseFloat(data.amount),
 			paymentDate: data.paymentDate
 				? normalizeDateForStorage(data.paymentDate, { kind: 'date', boundary: 'start' })
-				: new Date(),
+				: normalizeDateForStorage(formatDateForInput(new Date()), { kind: 'date', boundary: 'start' }),
 			notes: data.notes
 		});
 
