@@ -13,10 +13,6 @@ The format is intentionally simple and release-focused so it can double as GitHu
 - Fixed current-cycle resolution for edited recurring bills so paid variable-cycle payments are no longer hidden behind duplicate unpaid cycles.
 - Deduplicated repeated cycle choices in the payment modal and added server-side cleanup to merge duplicate cycles back into a single canonical cycle.
 
-### Changed
-
-- Added an optional post-publish Dockhand deploy webhook step to the Docker publish workflow, with README guidance for GHCR-driven auto-update setups.
-
 ### Notes
 
 - Release tag: `v1.4.1`
