@@ -5,6 +5,18 @@ All notable changes to this project should be documented in this file.
 The format is intentionally simple and release-focused so it can double as GitHub release notes.
 
 
+## [1.4.2] - 2026-06-24
+
+### Changed
+
+- Removed the previously added Dockhand webhook automation so releases continue to rely on GHCR image publishing without assuming a public deploy callback URL from Unraid.
+
+### Notes
+
+- Release tag: `v1.4.2`
+- App version: `1.4.2`
+
+
 ## [1.4.1] - 2026-06-24
 
 ### Fixed
