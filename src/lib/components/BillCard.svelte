@@ -184,13 +184,14 @@
 				{#if bill.isRecurring}
 					<StatusBadge
 						status="recurring"
+					iconOnly={true}
 						title={bill.recurrenceUnit && bill.recurrenceInterval
 							? getRecurrenceDescription(bill.recurrenceInterval, bill.recurrenceUnit as any, bill.recurrenceDay)
-							: ''}
+							: 'Recurring'}
 					/>
 				{/if}
 				{#if bill.isAutopay}
-					<StatusBadge status="autopay" title="This bill is set to autopay" />
+					<StatusBadge status="autopay" iconOnly={true} title="This bill is set to autopay" />
 				{/if}
 			</div>
 		</div>

@@ -15,9 +15,10 @@
 		label?: string;
 		title?: string;
 		size?: 'sm' | 'md';
+		iconOnly?: boolean;
 	}
 
-	let { status, label, title, size = 'sm' }: Props = $props();
+	let { status, label, title, size = 'sm', iconOnly = false }: Props = $props();
 
 	const statusConfig = {
 		paid: {
@@ -97,11 +98,20 @@
 </script>
 
 <span
-	class={`inline-flex items-center gap-1.5 rounded-full border font-medium leading-none ${config.classes} ${
-		size === 'md' ? 'px-3 py-1 text-sm' : 'px-2.5 py-0.5 text-xs'
+	class={`inline-flex items-center rounded-full border font-medium leading-none ${config.classes} ${
+		iconOnly
+			? size === 'md'
+				? 'p-2 text-sm'
+				: 'p-1.5 text-xs'
+			: size === 'md'
+				? 'gap-1.5 px-3 py-1 text-sm'
+				: 'gap-1.5 px-2.5 py-0.5 text-xs'
 	}`}
-	{title}
+	title={title ?? text}
+	aria-label={text}
 >
 	<Icon class={size === 'md' ? 'h-3.5 w-3.5' : 'h-3 w-3'} />
-	{text}
+	{#if !iconOnly}
+		{text}
+	{/if}
 </span>

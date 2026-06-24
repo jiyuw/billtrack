@@ -6,6 +6,7 @@
 	import PaymentModal from '$lib/components/PaymentModal.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import FloatingActionButton from '$lib/components/FloatingActionButton.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { BillWithCategory, BillWithCycle } from '$lib/types/bill';
 	import { invalidateAll } from '$app/navigation';
 	import { endOfDay } from 'date-fns';
@@ -434,6 +435,19 @@
 		</FloatingActionButton>
 
 		<!-- Bills List -->
+		<div class="mb-3 flex justify-end">
+			<div class="inline-flex items-center gap-3 px-1 text-[11px] font-medium tracking-[0.12em] text-gray-400 dark:text-gray-500">
+				<div class="inline-flex items-center gap-1.5">
+					<StatusBadge status="recurring" iconOnly={true} title="Recurring bill" />
+					<span>Recurring</span>
+				</div>
+				<div class="inline-flex items-center gap-1.5">
+					<StatusBadge status="autopay" iconOnly={true} title="Autopay enabled" />
+					<span>Autopay</span>
+				</div>
+			</div>
+		</div>
+
 		{#if filteredBills.length === 0}
 			<div class="rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-12 text-center">
 				<svg

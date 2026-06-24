@@ -5,6 +5,18 @@ All notable changes to this project should be documented in this file.
 The format is intentionally simple and release-focused so it can double as GitHub release notes.
 
 
+## [1.2.2] - 2026-06-24
+
+### Fixed
+
+- Simplified the recurring and autopay badges on dashboard bill cards to icon-only markers for a more compact header.
+- Added a lighter, inline dashboard legend beneath the search/filter area so the new icon-only bill markers remain understandable without adding visual weight.
+
+### Notes
+
+- App version: `1.2.2`
+
+
 ## [1.2.1] - 2026-06-23
 
 ### Fixed
