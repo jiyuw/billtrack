@@ -44,6 +44,30 @@
 		meta?: Point['meta'];
 	};
 
+	function roundCurrency(value: number) {
+		return Math.round(value * 100) / 100;
+	}
+
+	function niceNumber(value: number, round: boolean) {
+		const exponent = Math.floor(Math.log10(value || 1));
+		const fraction = value / 10 ** exponent;
+		let niceFraction: number;
+
+		if (round) {
+			if (fraction < 1.5) niceFraction = 1;
+			else if (fraction < 3) niceFraction = 2;
+			else if (fraction < 7) niceFraction = 5;
+			else niceFraction = 10;
+		} else {
+			if (fraction <= 1) niceFraction = 1;
+			else if (fraction <= 2) niceFraction = 2;
+			else if (fraction <= 5) niceFraction = 5;
+			else niceFraction = 10;
+		}
+
+		return niceFraction * 10 ** exponent;
+	}
+
 	let canvas: HTMLCanvasElement | null = null;
 	let chart: Chart<'line', ChartPoint[], unknown> | null = null;
 
@@ -55,7 +79,7 @@
 
 		const chartPoints: ChartPoint[] = points.map((point) => ({
 			x: point.x,
-			y: point.y,
+			y: roundCurrency(point.y),
 			meta: point.meta
 		}));
 		const pointCount = chartPoints.length;
@@ -68,14 +92,22 @@
 		const rawMinY = yValues.length > 0 ? Math.min(...yValues) : 0;
 		const rawMaxY = yValues.length > 0 ? Math.max(...yValues) : 0;
 		const yRange = rawMaxY - rawMinY;
-		const yPadding =
+		const visualRange =
 			yValues.length === 0
-				? 1
+				? 10
 				: yRange === 0
-					? Math.max(rawMaxY * 0.25, 10)
-					: Math.max(yRange * 0.35, rawMaxY * 0.08, 5);
-		const yMin = Math.max(0, rawMinY - yPadding);
-		const yMax = rawMaxY + yPadding;
+					? Math.max(rawMaxY * 0.4, 20)
+					: yRange * 1.7;
+		const tickCount = 5;
+		const rawStepSize = niceNumber(visualRange / (tickCount - 1), true);
+		const stepSize = Math.max(1, Math.round(rawStepSize));
+		const baseMin = yValues.length === 0 ? 0 : rawMinY - stepSize;
+		const baseMax = yValues.length === 0 ? stepSize * (tickCount - 1) : rawMaxY + stepSize;
+		const yMin = Math.max(0, Math.floor(baseMin / stepSize) * stepSize);
+		const yMax = Math.ceil(baseMax / stepSize) * stepSize;
+		const currencyFormatter = new Intl.NumberFormat('en-US', {
+			maximumFractionDigits: 0
+		});
 
 		chart = new Chart(canvas, {
 			type: 'line',
@@ -146,7 +178,8 @@
 							text: yLabel
 						},
 						ticks: {
-							callback: (value) => `$${value}`
+							stepSize,
+							callback: (value) => `$${currencyFormatter.format(Number(value))}`
 						}
 					}
 				}

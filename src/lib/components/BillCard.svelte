@@ -1,10 +1,27 @@
 <script lang="ts">
 	import type { BillWithCategory, BillWithCycle } from '$lib/types/bill';
 	import StatusIndicator from './StatusIndicator.svelte';
-	import CategoryBadge from './CategoryBadge.svelte';
 	import StatusBadge from './StatusBadge.svelte';
 	import { format } from 'date-fns';
-	import { Home, Car, HelpCircle } from 'lucide-svelte';
+	import {
+		Home,
+		Car,
+		HelpCircle,
+		Zap,
+		ShieldCheck,
+		Receipt,
+		ShoppingCart,
+		Fuel,
+		Utensils,
+		Coffee,
+		Popcorn,
+		Dumbbell,
+		Gamepad2,
+		Smartphone,
+		Shirt,
+		Dog,
+		Heart
+	} from 'lucide-svelte';
 	import { getRecurrenceDescription } from '$lib/utils/recurrence';
 	import { goto } from '$app/navigation';
 	import { formatCurrency } from '$lib/utils/format';
@@ -59,6 +76,29 @@
 			Math.max(((currentPaid - usageStats.min) / (usageStats.max - usageStats.min)) * 100, 0),
 			100
 		);
+	});
+	const CategoryIcon = $derived.by(() => {
+		const iconMap = {
+			utility: Zap,
+			insurance: ShieldCheck,
+			mortgage: Home,
+			fee: Receipt,
+			'shopping-cart': ShoppingCart,
+			fuel: Fuel,
+			utensils: Utensils,
+			coffee: Coffee,
+			popcorn: Popcorn,
+			dumbbell: Dumbbell,
+			gamepad: Gamepad2,
+			smartphone: Smartphone,
+			shirt: Shirt,
+			home: Home,
+			dog: Dog,
+			heart: Heart
+		};
+
+		if (!('category' in bill) || !bill.category?.icon) return null;
+		return iconMap[bill.category.icon as keyof typeof iconMap] ?? null;
 	});
 
 	function handleCardClick(e: MouseEvent | KeyboardEvent) {
@@ -115,30 +155,51 @@
 		{/if}
 	</div>
 	<div class="p-4">
-		<div class="mb-2 flex flex-wrap items-center gap-2">
-			<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">{bill.name}</h3>
-			{#if bill.isRecurring}
-				<StatusBadge
-					status="recurring"
-					title={bill.recurrenceUnit && bill.recurrenceInterval
-						? getRecurrenceDescription(bill.recurrenceInterval, bill.recurrenceUnit as any, bill.recurrenceDay)
-						: ''}
-				/>
+		<div class="mb-2 flex min-h-[32px] flex-wrap items-center gap-x-2 gap-y-2 pl-1">
+			{#if 'category' in bill && bill.category}
+				<div
+					class="flex shrink-0 items-center"
+					title={bill.category.name}
+					aria-label={bill.category.name}
+				>
+					{#if CategoryIcon}
+						<CategoryIcon size={18} style="color: {bill.category.color}" />
+					{:else if bill.category.icon}
+						<span class="text-sm leading-none" style="color: {bill.category.color}">{bill.category.icon}</span>
+					{:else}
+						<span class="text-sm leading-none" style="color: {bill.category.color}">•</span>
+					{/if}
+				</div>
+			{:else}
+				<div
+					class="flex shrink-0 items-center text-gray-500 dark:text-gray-400"
+					title="Uncategorized"
+					aria-label="Uncategorized"
+				>
+					<HelpCircle size={17} />
+				</div>
 			{/if}
-			{#if bill.isAutopay}
-				<StatusBadge status="autopay" title="This bill is set to autopay" />
-			{/if}
-			<StatusBadge status={bill.isVariable ? 'variable' : 'fixed'} />
+			<div class="flex min-w-0 flex-wrap items-center gap-2">
+				<h3 class="max-w-full truncate text-lg font-semibold text-gray-900 dark:text-gray-100">{bill.name}</h3>
+				{#if bill.isRecurring}
+					<StatusBadge
+						status="recurring"
+						title={bill.recurrenceUnit && bill.recurrenceInterval
+							? getRecurrenceDescription(bill.recurrenceInterval, bill.recurrenceUnit as any, bill.recurrenceDay)
+							: ''}
+					/>
+				{/if}
+				{#if bill.isAutopay}
+					<StatusBadge status="autopay" title="This bill is set to autopay" />
+				{/if}
+			</div>
 		</div>
 
-		<div class="mb-3 flex flex-wrap items-center gap-2">
+		<div class="mb-3 min-h-[28px]">
 			<StatusIndicator
 				dueDate={focusDueDate}
 				isPaid={isBillPaid}
 			/>
-			{#if 'category' in bill && bill.category}
-				<CategoryBadge category={bill.category} />
-			{/if}
 		</div>
 
 		<div class="grid grid-cols-2 gap-3 text-sm">

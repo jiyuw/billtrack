@@ -4,6 +4,19 @@ All notable changes to this project should be documented in this file.
 
 The format is intentionally simple and release-focused so it can double as GitHub release notes.
 
+
+## [1.2.1] - 2026-06-23
+
+### Fixed
+
+- Rounded the payment history chart Y-axis to integer tick values so the min and max labels no longer show long floating-point decimals.
+- Tightened the Bills dashboard card header layout so category icons, titles, and recurring/autopay badges align more consistently across mixed bill types.
+
+### Notes
+
+- Release tag: `v1.2.1`
+- App version: `1.2.1`
+
 ## [1.2.0] - 2026-06-12
 
 ### Changed
