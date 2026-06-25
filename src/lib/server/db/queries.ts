@@ -15,6 +15,40 @@ import {
 import { eq, and, gte, lte, desc, asc, like, or } from 'drizzle-orm';
 import type { BillFilters, BillSort } from '$lib/types/bill';
 
+const assetTagSelect = {
+	id: assetTags.id,
+	name: assetTags.name,
+	type: assetTags.type,
+	isRental: assetTags.isRental,
+	color: assetTags.color,
+	bannerPattern: assetTags.bannerPattern
+};
+
+const billSelect = {
+	id: bills.id,
+	name: bills.name,
+	amount: bills.amount,
+	dueDate: bills.dueDate,
+	cycleStartDate: bills.cycleStartDate,
+	cycleEndDate: bills.cycleEndDate,
+	paymentLink: bills.paymentLink,
+	categoryId: bills.categoryId,
+	assetTagId: bills.assetTagId,
+	paymentMethodId: bills.paymentMethodId,
+	isRecurring: bills.isRecurring,
+	recurrenceType: bills.recurrenceType,
+	recurrenceInterval: bills.recurrenceInterval,
+	recurrenceUnit: bills.recurrenceUnit,
+	recurrenceDay: bills.recurrenceDay,
+	chargeToTenant: bills.chargeToTenant,
+	isPaid: bills.isPaid,
+	isAutopay: bills.isAutopay,
+	isVariable: bills.isVariable,
+	notes: bills.notes,
+	createdAt: bills.createdAt,
+	updatedAt: bills.updatedAt
+};
+
 // ===== CATEGORY QUERIES =====
 
 export function getAllCategories(): Category[] {
@@ -102,29 +136,9 @@ export function deletePaymentMethod(id: number) {
 export function getAllBills(filters?: BillFilters, sort?: BillSort) {
 	let query = db
 		.select({
-			id: bills.id,
-			name: bills.name,
-			amount: bills.amount,
-			dueDate: bills.dueDate,
-			cycleStartDate: bills.cycleStartDate,
-			cycleEndDate: bills.cycleEndDate,
-			paymentLink: bills.paymentLink,
-			categoryId: bills.categoryId,
-			assetTagId: bills.assetTagId,
-			paymentMethodId: bills.paymentMethodId,
-			isRecurring: bills.isRecurring,
-			recurrenceType: bills.recurrenceType,
-			recurrenceInterval: bills.recurrenceInterval,
-			recurrenceUnit: bills.recurrenceUnit,
-			recurrenceDay: bills.recurrenceDay,
-			isPaid: bills.isPaid,
-			isAutopay: bills.isAutopay,
-			isVariable: bills.isVariable,
-			notes: bills.notes,
-			createdAt: bills.createdAt,
-			updatedAt: bills.updatedAt,
+			...billSelect,
 			category: categories,
-			assetTag: assetTags
+			assetTag: assetTagSelect
 		})
 		.from(bills)
 		.leftJoin(categories, eq(bills.categoryId, categories.id))
@@ -192,29 +206,9 @@ export function getAllBills(filters?: BillFilters, sort?: BillSort) {
 export function getBillById(id: number) {
 	return db
 		.select({
-			id: bills.id,
-			name: bills.name,
-			amount: bills.amount,
-			dueDate: bills.dueDate,
-			cycleStartDate: bills.cycleStartDate,
-			cycleEndDate: bills.cycleEndDate,
-			paymentLink: bills.paymentLink,
-			categoryId: bills.categoryId,
-			assetTagId: bills.assetTagId,
-			paymentMethodId: bills.paymentMethodId,
-			isRecurring: bills.isRecurring,
-			recurrenceType: bills.recurrenceType,
-			recurrenceInterval: bills.recurrenceInterval,
-			recurrenceUnit: bills.recurrenceUnit,
-			recurrenceDay: bills.recurrenceDay,
-			isPaid: bills.isPaid,
-			isAutopay: bills.isAutopay,
-			isVariable: bills.isVariable,
-			notes: bills.notes,
-			createdAt: bills.createdAt,
-			updatedAt: bills.updatedAt,
+			...billSelect,
 			category: categories,
-			assetTag: assetTags,
+			assetTag: assetTagSelect,
 			paymentMethod: paymentMethods
 		})
 		.from(bills)

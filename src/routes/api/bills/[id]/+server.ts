@@ -1,6 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getBillById, updateBill, deleteBill, markBillAsPaid } from '$lib/server/db/queries';
+import {
+	getBillById,
+	updateBill,
+	deleteBill,
+	markBillAsPaid,
+	getAssetTagById
+} from '$lib/server/db/queries';
 import {
 	createPayment,
 	createPaymentForCycle,
@@ -110,6 +116,15 @@ export const PUT: RequestHandler = async (event) => {
 		const categoryId = parseOptionalId(data.categoryId);
 		const assetTagId = parseOptionalId(data.assetTagId);
 		const paymentMethodId = parseOptionalId(data.paymentMethodId);
+		const selectedAssetId = assetTagId !== undefined ? assetTagId : existingBill.assetTagId;
+		const selectedAsset =
+			selectedAssetId === null || selectedAssetId === undefined
+				? null
+				: getAssetTagById(selectedAssetId);
+		const shouldNormalizeChargeToTenant =
+			data.chargeToTenant !== undefined || assetTagId !== undefined;
+		const requestedChargeToTenant =
+			data.chargeToTenant === undefined ? existingBill.chargeToTenant : data.chargeToTenant === true;
 
 		if (data.isAutopay === true && paymentMethodId === null) {
 			logger.warn('validation_failed', {
@@ -139,6 +154,9 @@ export const PUT: RequestHandler = async (event) => {
 			isVariable: data.isVariable,
 			notes: data.notes
 		};
+		if (shouldNormalizeChargeToTenant) {
+			updateData.chargeToTenant = selectedAsset?.isRental && requestedChargeToTenant;
+		}
 		if (data.isRecurring === false) {
 			updateData.recurrenceInterval = null;
 			updateData.recurrenceUnit = null;

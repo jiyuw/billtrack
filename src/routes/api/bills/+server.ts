@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createBill, getAllBills } from '$lib/server/db/queries';
+import { createBill, getAllBills, getAssetTagById } from '$lib/server/db/queries';
 import type { NewBill } from '$lib/server/db/schema';
 import { normalizeDateForStorage } from '$lib/utils/dates';
 import { createRequestLogger } from '$lib/server/api-logger';
@@ -108,6 +108,7 @@ export const POST: RequestHandler = async (event) => {
 		const categoryId = parseOptionalId(data.categoryId);
 		const assetTagId = parseOptionalId(data.assetTagId);
 		const paymentMethodId = parseOptionalId(data.paymentMethodId);
+		const selectedAsset = assetTagId === null ? null : getAssetTagById(assetTagId);
 
 		if (data.isAutopay && paymentMethodId === null) {
 			logger.warn('validation_failed', {
@@ -132,6 +133,7 @@ export const POST: RequestHandler = async (event) => {
 			recurrenceDay: data.isRecurring
 				? (data.recurrenceDay ? parseInt(data.recurrenceDay) : dueDate.getDate())
 				: null,
+			chargeToTenant: selectedAsset?.isRental && data.chargeToTenant === true,
 			isPaid: data.isPaid || false,
 			isAutopay: data.isAutopay || false,
 			paymentMethodId: data.isAutopay ? paymentMethodId : null,

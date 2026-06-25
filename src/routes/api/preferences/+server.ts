@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
-	getUserPreferences,
 	updateUserPreferences,
 	getOrCreateUserPreferences
 } from '$lib/server/db/preference-queries';
@@ -40,12 +39,27 @@ export const PUT: RequestHandler = async (event) => {
 			);
 		}
 
+		if (
+			data.rentalManagementEnabled !== undefined &&
+			typeof data.rentalManagementEnabled !== 'boolean'
+		) {
+			logger.warn('validation_failed', {
+				reason: 'invalid_rental_management_enabled',
+				rentalManagementEnabled: data.rentalManagementEnabled
+			});
+			return json(
+				{ error: 'Invalid rentalManagementEnabled. Must be a boolean' },
+				{ status: 400 }
+			);
+		}
+
 		// Get or create preferences
 		const existing = getOrCreateUserPreferences();
 
 		// Update preferences
 		const updated = updateUserPreferences(existing.id, {
-			themePreference: data.themePreference
+			themePreference: data.themePreference,
+			rentalManagementEnabled: data.rentalManagementEnabled
 		});
 
 		logger.audit('success', {

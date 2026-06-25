@@ -38,6 +38,7 @@ export const PUT: RequestHandler = async (event) => {
 		const updateData: Partial<NewAssetTag> = {
 			name: data.name,
 			type: data.type ?? null,
+			isRental: typeof data.isRental === 'boolean' ? data.isRental : undefined,
 			color: data.color ?? null,
 			bannerPattern: data.bannerPattern ?? 'solid'
 		};

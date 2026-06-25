@@ -26,6 +26,7 @@ export const POST: RequestHandler = async (event) => {
 		logger.info('request', {
 			name: data.name,
 			type: data.type ?? null,
+			isRental: data.isRental === true,
 			color: data.color ?? null,
 			bannerPattern: data.bannerPattern ?? 'solid'
 		});
@@ -37,6 +38,7 @@ export const POST: RequestHandler = async (event) => {
 		const newTag: NewAssetTag = {
 			name: data.name,
 			type: data.type || null,
+			isRental: data.isRental === true,
 			color: data.color || null,
 			bannerPattern: data.bannerPattern || 'solid'
 		};

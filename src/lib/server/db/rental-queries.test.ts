@@ -48,3 +48,57 @@ test('backup and reset flows include rental payment notifications', () => {
 	assert.match(settingsPage, /rentalPaymentNotifications/);
 	assert.match(resetScript, /rental_payment_notifications/);
 });
+
+test('preference defaults and bill query projections include rental fields', () => {
+	const preferenceQueries = readFileSync(new URL('./preference-queries.ts', import.meta.url), 'utf8');
+	const queries = readFileSync(new URL('./queries.ts', import.meta.url), 'utf8');
+
+	assert.match(
+		preferenceQueries,
+		/createUserPreferences\(\{\s*themePreference: 'system',\s*rentalManagementEnabled: false\s*\}\)/
+	);
+	assert.match(queries, /chargeToTenant: bills\.chargeToTenant/);
+	assert.match(queries, /isRental: assetTags\.isRental/);
+});
+
+test('preferences API validates and persists rentalManagementEnabled', () => {
+	const preferencesRoute = readFileSync(
+		new URL('../../../../src/routes/api/preferences/+server.ts', import.meta.url),
+		'utf8'
+	);
+
+	assert.match(preferencesRoute, /typeof data\.rentalManagementEnabled !== 'boolean'/);
+	assert.match(preferencesRoute, /rentalManagementEnabled: data\.rentalManagementEnabled/);
+});
+
+test('asset tag APIs map isRental in create and update payloads', () => {
+	const createRoute = readFileSync(
+		new URL('../../../../src/routes/api/asset-tags/+server.ts', import.meta.url),
+		'utf8'
+	);
+	const updateRoute = readFileSync(
+		new URL('../../../../src/routes/api/asset-tags/[id]/+server.ts', import.meta.url),
+		'utf8'
+	);
+
+	assert.match(createRoute, /isRental: data\.isRental === true/);
+	assert.match(updateRoute, /isRental: typeof data\.isRental === 'boolean' \? data\.isRental : undefined/);
+});
+
+test('bill APIs map chargeToTenant and force it off for non-rental assets', () => {
+	const createRoute = readFileSync(
+		new URL('../../../../src/routes/api/bills/+server.ts', import.meta.url),
+		'utf8'
+	);
+	const updateRoute = readFileSync(
+		new URL('../../../../src/routes/api/bills/[id]/+server.ts', import.meta.url),
+		'utf8'
+	);
+
+	assert.match(createRoute, /getAssetTagById/);
+	assert.match(createRoute, /chargeToTenant:/);
+	assert.match(createRoute, /selectedAsset\?\.isRental && data\.chargeToTenant === true/);
+	assert.match(updateRoute, /getAssetTagById/);
+	assert.match(updateRoute, /updateData\.chargeToTenant =/);
+	assert.match(updateRoute, /selectedAsset\?\.isRental && requestedChargeToTenant/);
+});

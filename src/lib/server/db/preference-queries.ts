@@ -46,6 +46,7 @@ export function getOrCreateUserPreferences(): UserPreferences {
 
 	// Create with default values
 	return createUserPreferences({
-		themePreference: 'system'
+		themePreference: 'system',
+		rentalManagementEnabled: false
 	});
 }
