@@ -102,3 +102,18 @@ test('bill APIs map chargeToTenant and force it off for non-rental assets', () =
 	assert.match(updateRoute, /updateData\.chargeToTenant =/);
 	assert.match(updateRoute, /selectedAsset\?\.isRental && requestedChargeToTenant/);
 });
+
+test('rental query and api files expose notification helpers', () => {
+	const rentalQueries = readFileSync(new URL('./rental-queries.ts', import.meta.url), 'utf8');
+	const notificationRoute = readFileSync(
+		new URL('../../../../src/routes/api/rentals/payments/[id]/notification/+server.ts', import.meta.url),
+		'utf8'
+	);
+
+	assert.match(rentalQueries, /export function mergeNotificationState/);
+	assert.match(rentalQueries, /export function getRentalAssets/);
+	assert.match(rentalQueries, /export function getRentalAssetDetail/);
+	assert.match(rentalQueries, /export function upsertRentalPaymentNotification/);
+	assert.match(notificationRoute, /notifiedOn is required when notifying a payment/);
+	assert.match(notificationRoute, /getChargeableRentalPayment/);
+});
