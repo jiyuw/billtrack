@@ -34,7 +34,7 @@
 			href={`/rentals?asset=${asset.id}`}
 			class={`flex items-center justify-between gap-3 rounded-lg border p-4 transition ${
 				asset.id === selectedAssetId
-					? 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-500 dark:bg-blue-950/30 dark:text-blue-100'
+					? 'border-blue-500 bg-white text-gray-900 dark:border-blue-500 dark:bg-gray-800 dark:text-gray-100'
 					: 'border-gray-200 bg-white text-gray-900 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-gray-600'
 			}`}
 		>
