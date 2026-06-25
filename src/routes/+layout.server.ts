@@ -2,7 +2,9 @@ import { getOrCreateUserPreferences } from '$lib/server/db/preference-queries';
 import type { LayoutServerLoad } from './$types';
 import packageJson from '../../package.json';
 
-export const load: LayoutServerLoad = async () => {
+export const load: LayoutServerLoad = async ({ depends }) => {
+	depends('app:preferences');
+
 	// Load theme preference from database on server side
 	const preferences = getOrCreateUserPreferences();
 

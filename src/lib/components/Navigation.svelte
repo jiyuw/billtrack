@@ -10,13 +10,13 @@
 
 	const isActive = (path: string) => $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
 
-	const navItems = [
+	const navItems = $derived.by(() => [
 		{ href: '/', label: 'Bills', icon: LayoutDashboard },
 		{ href: '/analytics', label: 'Analytics', icon: TrendingUp },
 		...(rentalManagementEnabled ? [{ href: '/rentals', label: 'Rentals', icon: Building2 }] : []),
 		{ href: '/activity', label: 'Activity', icon: Activity },
 		{ href: '/settings', label: 'Settings', icon: Settings }
-	];
+	]);
 </script>
 
 <nav class="sticky top-0 z-40 hidden border-b border-gray-200/80 bg-white/92 backdrop-blur dark:border-gray-700/80 dark:bg-gray-800/92 md:block">

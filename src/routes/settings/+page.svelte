@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import ExportImportSection from '$lib/components/settings/ExportImportSection.svelte';
 	import ResetDataSection from '$lib/components/settings/ResetDataSection.svelte';
 	import ResetDataModal from '$lib/components/settings/ResetDataModal.svelte';
@@ -382,7 +382,7 @@
 			});
 
 			if (response.ok) {
-				await invalidateAll();
+				await invalidate('app:preferences');
 			} else {
 				rentalManagementEnabled = !nextValue;
 				alert('Failed to update rental management setting. Please try again.');

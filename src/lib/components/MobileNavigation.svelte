@@ -4,13 +4,13 @@
 
 	let { rentalManagementEnabled = false }: { rentalManagementEnabled?: boolean } = $props();
 
-	const navItems = [
+	const navItems = $derived.by(() => [
 		{ href: '/', label: 'Bills', icon: Home },
 		{ href: '/analytics', label: 'Analytics', icon: TrendingUp },
 		...(rentalManagementEnabled ? [{ href: '/rentals', label: 'Rentals', icon: Building2 }] : []),
 		{ href: '/activity', label: 'Activity', icon: Activity },
 		{ href: '/settings', label: 'Settings', icon: Settings }
-	];
+	]);
 
 	const isActive = (path: string) => {
 		if (path === '/') {

@@ -143,7 +143,9 @@ test('settings and navigation expose rental controls conditionally', () => {
 	assert.match(layoutServer, /rentalManagementEnabled: preferences\.rentalManagementEnabled/);
 	assert.match(navigation, /rentalManagementEnabled/);
 	assert.match(navigation, /href: '\/rentals'/);
+	assert.match(navigation, /const navItems = \$derived\.by/);
 	assert.match(mobileNavigation, /grid-template-columns: repeat/);
+	assert.match(mobileNavigation, /const navItems = \$derived\.by/);
 	assert.match(settingsPage, /handleRentalManagementToggle/);
 	assert.match(assetTagModal, /bind:checked=\{assetTagForm\.isRental\}/);
 });
@@ -186,4 +188,23 @@ test('rentals page is wired to rental asset detail and notification rows', () =>
 	assert.match(rentalPage, /RentalBillGroup/);
 	assert.match(notificationRow, /\/api\/rentals\/payments\/\$\{payment\.id\}\/notification/);
 	assert.match(notificationRow, /notifiedOn/);
+});
+
+test('rental management toggle invalidates only layout preferences', () => {
+	const layoutServer = readFileSync(
+		new URL('../../../../src/routes/+layout.server.ts', import.meta.url),
+		'utf8'
+	);
+	const settingsPage = readFileSync(
+		new URL('../../../../src/routes/settings/+page.svelte', import.meta.url),
+		'utf8'
+	);
+	const rentalToggleHandler = settingsPage.match(
+		/async function handleRentalManagementToggle\(\) \{[\s\S]*?\n\t\}/
+	)?.[0];
+
+	assert.match(layoutServer, /depends\('app:preferences'\)/);
+	assert.ok(rentalToggleHandler, 'Expected handleRentalManagementToggle to exist');
+	assert.doesNotMatch(rentalToggleHandler, /invalidateAll\(\)/);
+	assert.match(rentalToggleHandler, /invalidate\('app:preferences'\)/);
 });
