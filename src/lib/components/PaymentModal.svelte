@@ -3,8 +3,9 @@
 	import Button from '$lib/components/Button.svelte';
 	import type { BillWithCategory } from '$lib/types/bill';
 	import type { BillCycle, BillPayment } from '$lib/server/db/schema';
-	import { format, endOfDay } from 'date-fns';
+	import { format } from 'date-fns';
 	import { formatDateForInput, formatStoredDate, formatStoredDateForInput } from '$lib/utils/dates';
+	import { getInitialSelectedCycleId, normalizePaymentCycles } from './payment-modal-utils';
 
 	interface Props {
 		isOpen: boolean;
@@ -39,42 +40,6 @@
 	let selectedCycleId = $state<number | null>(null);
 	const isEditing = $derived(existingPayment !== null);
 
-	function normalizeCycles(input: BillCycle[]): BillCycle[] {
-		const normalized = input.map((cycle) => ({
-			...cycle,
-			startDate: cycle.startDate instanceof Date ? cycle.startDate : new Date(cycle.startDate),
-			endDate: cycle.endDate instanceof Date ? cycle.endDate : new Date(cycle.endDate)
-		}));
-
-		const groups = new Map<string, BillCycle[]>();
-		for (const cycle of normalized) {
-			const dueDate =
-				cycle.dueDate instanceof Date
-					? cycle.dueDate
-					: cycle.dueDate
-						? new Date(cycle.dueDate)
-						: cycle.endDate;
-			const key = [
-				cycle.startDate.getTime(),
-				cycle.endDate.getTime(),
-				dueDate.getTime()
-			].join(':');
-
-			if (!groups.has(key)) {
-				groups.set(key, []);
-			}
-			groups.get(key)?.push(cycle);
-		}
-
-		return [...groups.values()].map((group) =>
-			[...group].sort((a, b) => {
-				if (a.isPaid !== b.isPaid) return Number(b.isPaid) - Number(a.isPaid);
-				if (a.totalPaid !== b.totalPaid) return b.totalPaid - a.totalPaid;
-				return a.id - b.id;
-			})[0]
-		);
-	}
-
 	// Update amount when bill changes
 	$effect(() => {
 		if (!bill || !isOpen) return;
@@ -96,9 +61,13 @@
 		if (!isOpen || !bill) return;
 
 		if (cycles.length > 0) {
-			const normalized = normalizeCycles(cycles);
+			const normalized = normalizePaymentCycles(cycles);
 			availableCycles = normalized;
-			selectedCycleId = focusCycleId ?? normalized[0]?.id ?? null;
+			selectedCycleId = getInitialSelectedCycleId({
+				cycles: normalized,
+				focusCycleId,
+				existingPaymentCycleId: existingPayment?.cycleId ?? null
+			});
 			return;
 		}
 
@@ -107,19 +76,13 @@
 				const response = await fetch(`/api/bills/${bill.id}/cycles`);
 				if (!response.ok) return;
 				const data = (await response.json()) as BillCycle[];
-				const normalized = normalizeCycles(data);
+				const normalized = normalizePaymentCycles(data);
 				availableCycles = normalized;
-
-				const todayEnd = endOfDay(new Date());
-				const unpaidPast = normalized
-					.filter((cycle) => cycle.endDate <= todayEnd && !cycle.isPaid)
-					.sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0];
-				const current = normalized.find(
-					(cycle) => cycle.startDate <= todayEnd && cycle.endDate >= todayEnd
-				);
-
-				selectedCycleId =
-					focusCycleId ?? unpaidPast?.id ?? current?.id ?? normalized[0]?.id ?? null;
+				selectedCycleId = getInitialSelectedCycleId({
+					cycles: normalized,
+					focusCycleId,
+					existingPaymentCycleId: existingPayment?.cycleId ?? null
+				});
 			} catch (error) {
 				console.error('Failed to load cycles', error);
 			}
