@@ -31,6 +31,7 @@ Add a new toggle in Settings:
 Update the existing asset management area in Settings so each asset can also be marked as rental:
 - Add an `Is rental` control to the asset create/edit flow
 - This becomes the primary place to define whether an asset participates in rental management
+- Changing an asset from rental to non-rental does not delete historical rental configuration or notify data
 
 When disabled:
 - The rental management page is hidden from navigation
@@ -82,6 +83,12 @@ Suggested empty states:
 - No bills marked chargeable
 - No payments yet for this bill
 
+Lifecycle behavior:
+- If an asset is changed from rental to non-rental, it disappears from the rental management page
+- Existing `chargeToTenant` values for that asset's bills are preserved
+- Existing payment notify records for those bills are preserved
+- If the asset is later marked rental again, the previous bill and payment notify configuration becomes visible again
+
 ## Recommended Technical Approach
 
 Use the existing domain model and add a thin rental overlay:
@@ -130,6 +137,7 @@ Behavior note:
 - This flag is meaningful only when the bill is attached to an asset tag
 - The bill create/edit form should only show this option when the selected asset is marked rental
 - If the bill has no `assetTagId`, the flag should remain `false`
+- If the assigned asset stops being rental later, the stored flag remains but becomes inactive in the UI until the asset is rental again
 
 ### 4. New table: `rental_payment_notifications`
 
@@ -143,6 +151,9 @@ Columns:
 
 Purpose:
 - Stores whether a specific payment has been notified to the tenant and, if so, on which date
+
+Behavior note:
+- Notification rows are historical records and are not deleted when an asset is no longer marked rental
 
 Why a separate table:
 - Keeps rental-specific state out of generic payment records
@@ -264,6 +275,7 @@ Because the current app already supports mobile layouts, this page should stack 
 2. User toggles `isRental`
 3. Asset tag API updates the asset tag
 4. Rental page includes or excludes that asset accordingly
+5. Existing chargeable-bill flags and payment notify history are preserved regardless of toggle direction
 
 ### Marking a bill as chargeable
 1. User opens bill create/edit
@@ -286,6 +298,7 @@ Because the current app already supports mobile layouts, this page should stack 
 - Payment notification updates should only be allowed for payments that belong to a bill marked `chargeToTenant = true`
 - If `isNotified = true`, `notifiedOn` is required
 - If `isNotified = false`, `notifiedOn` should be stored as `null`
+- Changing `isRental` from `true` to `false` must not delete or rewrite related `chargeToTenant` or notification records
 
 If validation fails:
 - Return a 400 response with a clear message
@@ -305,6 +318,10 @@ Backfill behavior:
 - No asset is rental by default
 - No bill is chargeable by default
 - No payment is notified by default
+
+Ongoing data-retention behavior:
+- Rental configuration and notification history are soft-hidden when an asset is not rental
+- They are not automatically deleted during normal rental/non-rental toggles
 
 ## Testing Strategy
 
@@ -391,6 +408,18 @@ Risk:
 
 Mitigation:
 - Hide this behind rental query helpers and keep API payloads simple
+
+### Decision: preserve historical rental data when an asset stops being rental
+
+This is the right tradeoff for now because switching an asset out of rental mode is a configuration change, not a request to erase operational history.
+
+Risk:
+- Stored `chargeToTenant` and notify records may exist for assets that are currently non-rental
+
+Mitigation:
+- Treat those records as inactive while `isRental = false`
+- Hide them from rental UI until the asset is rental again
+- Avoid destructive cleanup unless the user explicitly asks for a delete/reset workflow
 
 ## Open Questions
 
