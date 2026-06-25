@@ -81,17 +81,19 @@
 								>
 									<DisplayIcon size={22} />
 								</div>
-								<div>
-									<h3 class="font-medium text-gray-900 dark:text-gray-100">{tag.name}</h3>
+								<div class="min-w-0">
+									<div class="flex min-w-0 items-center gap-2">
+										<h3 class="truncate font-medium text-gray-900 dark:text-gray-100">{tag.name}</h3>
+										{#if tag.isRental}
+											<span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+												<KeyRound class="h-3 w-3" />
+												Rental
+											</span>
+										{/if}
+									</div>
 									<p class="text-xs text-gray-500 dark:text-gray-400">
 										{tag.type ? tag.type.charAt(0).toUpperCase() + tag.type.slice(1) : 'Other'}
 									</p>
-									{#if tag.isRental}
-										<span class="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
-											<KeyRound class="h-3 w-3" />
-											Rental
-										</span>
-									{/if}
 								</div>
 							</div>
 							<div class="flex gap-1">
