@@ -62,6 +62,14 @@ A comprehensive personal finance management application built with SvelteKit 5, 
 - Mark imported transactions as transfers and link a counterparty account
 - Optional category assignment for transfers
 
+### 🏠 Rental Management
+
+- Optional rental management mode in Settings
+- Mark individual assets as rentals from the asset manager
+- Choose whether each bill for a rental asset should be charged to the tenant
+- Review chargeable rental bills grouped by asset
+- Track whether each recent payment was notified to the tenant, including the notify date
+
 ### 📱 Import & Export
 
 - Import transactions from OFX/QFX bank files
@@ -278,6 +286,10 @@ The application uses SQLite with the following main tables:
 
 - **user_preferences** - Theme, balance, and income settings
 
+### Rental Management
+
+- **rental_payment_notifications** - Tenant notification status and notify date for bill payments
+
 ### Database Configuration
 
 - **Location:** `./data/bills.db` (configurable via `DATA_DIR` environment variable)
@@ -350,6 +362,12 @@ The application uses SQLite with the following main tables:
 ### Payments
 
 - `DELETE /api/payments/[id]` - Delete a payment record
+
+### Rental Management
+
+- `GET /api/rentals/assets` - List rental assets with chargeable bill and recent payment counts
+- `GET /api/rentals/assets/[id]` - Get chargeable bills and recent payments for one rental asset
+- `PATCH /api/rentals/payments/[id]/notification` - Update tenant notification status and notify date for a payment
 
 ## License
 
