@@ -117,3 +117,33 @@ test('rental query and api files expose notification helpers', () => {
 	assert.match(notificationRoute, /notifiedOn is required when notifying a payment/);
 	assert.match(notificationRoute, /getChargeableRentalPayment/);
 });
+
+test('settings and navigation expose rental controls conditionally', () => {
+	const layoutServer = readFileSync(
+		new URL('../../../../src/routes/+layout.server.ts', import.meta.url),
+		'utf8'
+	);
+	const navigation = readFileSync(
+		new URL('../../../../src/lib/components/Navigation.svelte', import.meta.url),
+		'utf8'
+	);
+	const mobileNavigation = readFileSync(
+		new URL('../../../../src/lib/components/MobileNavigation.svelte', import.meta.url),
+		'utf8'
+	);
+	const settingsPage = readFileSync(
+		new URL('../../../../src/routes/settings/+page.svelte', import.meta.url),
+		'utf8'
+	);
+	const assetTagModal = readFileSync(
+		new URL('../../../../src/lib/components/settings/AssetTagFormModal.svelte', import.meta.url),
+		'utf8'
+	);
+
+	assert.match(layoutServer, /rentalManagementEnabled: preferences\.rentalManagementEnabled/);
+	assert.match(navigation, /rentalManagementEnabled/);
+	assert.match(navigation, /href: '\/rentals'/);
+	assert.match(mobileNavigation, /grid-template-columns: repeat/);
+	assert.match(settingsPage, /handleRentalManagementToggle/);
+	assert.match(assetTagModal, /bind:checked=\{assetTagForm\.isRental\}/);
+});

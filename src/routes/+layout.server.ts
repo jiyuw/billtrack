@@ -8,6 +8,7 @@ export const load: LayoutServerLoad = async () => {
 
 	return {
 		themePreference: preferences.themePreference,
+		rentalManagementEnabled: preferences.rentalManagementEnabled,
 		appVersion: packageJson.version
 	};
 };

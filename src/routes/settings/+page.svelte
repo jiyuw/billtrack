@@ -46,17 +46,20 @@
 		type: AssetTagType;
 		color: string;
 		bannerPattern: AssetTagBannerPattern;
+		isRental: boolean;
 	}>({
 		name: '',
 		type: '',
 		color: '#6b7280',
-		bannerPattern: 'solid'
+		bannerPattern: 'solid',
+		isRental: false
 	});
 	let paymentMethodForm = $state<{ nickname: string; lastFour: string; type: PaymentMethodType }>({
 		nickname: '',
 		lastFour: '',
 		type: 'credit_card'
 	});
+	let rentalManagementEnabled = $state(data.preferences.rentalManagementEnabled);
 
 	// Icon options for categories (preset set)
 	const iconOptions = [
@@ -81,7 +84,8 @@
 			name: '',
 			type: 'house',
 			color: '#10b981',
-			bannerPattern: 'solid'
+			bannerPattern: 'solid',
+			isRental: false
 		};
 		showAddAssetTagModal = true;
 	}
@@ -106,7 +110,8 @@
 				name: tag.name,
 				type: (tag.type as AssetTagType) || '',
 				color: tag.color || '#6b7280',
-				bannerPattern: (tag.bannerPattern as AssetTagBannerPattern) || 'solid'
+				bannerPattern: (tag.bannerPattern as AssetTagBannerPattern) || 'solid',
+				isRental: tag.isRental
 			};
 			editingAssetTagId = id;
 			showEditAssetTagModal = true;
@@ -152,7 +157,8 @@
 					name: assetTagForm.name,
 					type: assetTagForm.type || null,
 					color: assetTagForm.color || null,
-					bannerPattern: assetTagForm.bannerPattern
+					bannerPattern: assetTagForm.bannerPattern,
+					isRental: assetTagForm.isRental
 				})
 			});
 
@@ -208,7 +214,8 @@
 					name: assetTagForm.name,
 					type: assetTagForm.type || null,
 					color: assetTagForm.color || null,
-					bannerPattern: assetTagForm.bannerPattern
+					bannerPattern: assetTagForm.bannerPattern,
+					isRental: assetTagForm.isRental
 				})
 			});
 
@@ -363,6 +370,30 @@
 		}
 	}
 
+	async function handleRentalManagementToggle() {
+		const nextValue = !rentalManagementEnabled;
+		rentalManagementEnabled = nextValue;
+
+		try {
+			const response = await fetch('/api/preferences', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ rentalManagementEnabled: nextValue })
+			});
+
+			if (response.ok) {
+				await invalidateAll();
+			} else {
+				rentalManagementEnabled = !nextValue;
+				alert('Failed to update rental management setting. Please try again.');
+			}
+		} catch (error) {
+			rentalManagementEnabled = !nextValue;
+			console.error('Error updating rental management setting:', error);
+			alert('Failed to update rental management setting. Please try again.');
+		}
+	}
+
 	function openAddPaymentMethodModal() {
 		paymentMethodForm = {
 			nickname: '',
@@ -442,6 +473,40 @@
 				onEdit={openEditPaymentMethodModal}
 				onDelete={handleDeletePaymentMethod}
 			/>
+		</section>
+
+		<section class={groupClass}>
+			<div class="mb-5">
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Rental Management</p>
+				<h2 class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">Tenant charge tracking</h2>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					Turn on rental tracking for assets and bill payments you charge through to tenants.
+				</p>
+			</div>
+			<button
+				type="button"
+				onclick={handleRentalManagementToggle}
+				class="flex w-full items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-gray-50/70 p-5 text-left transition hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900/30 dark:hover:border-gray-600"
+				aria-pressed={rentalManagementEnabled}
+			>
+				<span>
+					<span class="block text-sm font-semibold text-gray-900 dark:text-gray-100">Enable rental management</span>
+					<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
+						Add the Rentals page and allow assets to be marked as rental properties.
+					</span>
+				</span>
+				<span
+					class={`relative inline-flex h-7 w-12 shrink-0 rounded-full transition ${
+						rentalManagementEnabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+					}`}
+				>
+					<span
+						class={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
+							rentalManagementEnabled ? 'left-6' : 'left-1'
+						}`}
+					></span>
+				</span>
+			</button>
 		</section>
 
 		<section class={groupClass}>

@@ -8,6 +8,7 @@
 		type: '' | 'house' | 'vehicle';
 		color: string;
 		bannerPattern: 'solid' | 'stripes' | 'dots' | 'crosshatch';
+		isRental: boolean;
 	};
 
 	let {
@@ -116,6 +117,20 @@
 				</div>
 			</div>
 		</div>
+
+		<label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/30">
+			<input
+				type="checkbox"
+				bind:checked={assetTagForm.isRental}
+				class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+			/>
+			<span>
+				<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Is rental</span>
+				<span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+					Show this asset in rental management.
+				</span>
+			</span>
+		</label>
 
 		<div class="flex gap-3 pt-4">
 			<Button type="submit" variant="primary" size="md" fullWidth={true}>

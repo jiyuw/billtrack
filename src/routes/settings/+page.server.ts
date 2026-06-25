@@ -1,5 +1,6 @@
 import type { PageServerLoad, Actions } from './$types';
 import { getAllCategories, getAllPaymentMethods, getAllAssetTags } from '$lib/server/db/queries';
+import { getOrCreateUserPreferences } from '$lib/server/db/preference-queries';
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
 import { createRequestLogger } from '$lib/server/api-logger';
@@ -53,11 +54,13 @@ export const load: PageServerLoad = async () => {
 	const categoriesData = getAllCategories();
 	const assetTagsData = getAllAssetTags();
 	const paymentMethodsData = getAllPaymentMethods();
+	const preferences = getOrCreateUserPreferences();
 
 	return {
 		categories: categoriesData,
 		assetTags: assetTagsData,
-		paymentMethods: paymentMethodsData
+		paymentMethods: paymentMethodsData,
+		preferences
 	};
 };
 

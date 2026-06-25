@@ -1,15 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Activity, LayoutDashboard, Settings, TrendingUp } from 'lucide-svelte';
+	import { Activity, Building2, LayoutDashboard, Settings, TrendingUp } from 'lucide-svelte';
 	import favicon from '$lib/assets/favicon.svg';
 
-	let { appVersion }: { appVersion: string } = $props();
+	let {
+		appVersion,
+		rentalManagementEnabled = false
+	}: { appVersion: string; rentalManagementEnabled?: boolean } = $props();
 
 	const isActive = (path: string) => $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
 
 	const navItems = [
 		{ href: '/', label: 'Bills', icon: LayoutDashboard },
 		{ href: '/analytics', label: 'Analytics', icon: TrendingUp },
+		...(rentalManagementEnabled ? [{ href: '/rentals', label: 'Rentals', icon: Building2 }] : []),
 		{ href: '/activity', label: 'Activity', icon: Activity },
 		{ href: '/settings', label: 'Settings', icon: Settings }
 	];

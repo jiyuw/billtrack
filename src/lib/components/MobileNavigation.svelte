@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Home, TrendingUp, Settings, Activity } from 'lucide-svelte';
+	import { Home, TrendingUp, Settings, Activity, Building2 } from 'lucide-svelte';
+
+	let { rentalManagementEnabled = false }: { rentalManagementEnabled?: boolean } = $props();
 
 	const navItems = [
 		{ href: '/', label: 'Bills', icon: Home },
 		{ href: '/analytics', label: 'Analytics', icon: TrendingUp },
+		...(rentalManagementEnabled ? [{ href: '/rentals', label: 'Rentals', icon: Building2 }] : []),
 		{ href: '/activity', label: 'Activity', icon: Activity },
 		{ href: '/settings', label: 'Settings', icon: Settings }
 	];
@@ -21,7 +24,7 @@
 	class="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/95 md:hidden"
 	style="padding-bottom: env(safe-area-inset-bottom);"
 >
-	<div class="grid h-16 grid-cols-4">
+	<div class="grid h-16" style={`grid-template-columns: repeat(${navItems.length}, minmax(0, 1fr));`}>
 		{#each navItems as item}
 			<a
 				href={item.href}
@@ -31,7 +34,7 @@
 					? 'text-blue-600 dark:text-blue-400'
 					: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}"
 			>
-				<svelte:component this={item.icon} class="h-6 w-6" />
+				<item.icon class="h-6 w-6" />
 				<span class="text-xs font-medium">{item.label}</span>
 			</a>
 		{/each}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/Button.svelte';
-	import { Home, Car, Tag } from 'lucide-svelte';
+	import { Home, Car, KeyRound, Tag } from 'lucide-svelte';
 	import type { AssetTag } from '$lib/server/db/schema';
 	import { getAssetTagBannerStyle } from '$lib/utils/asset-tag-banner';
 
@@ -86,6 +86,12 @@
 									<p class="text-xs text-gray-500 dark:text-gray-400">
 										{tag.type ? tag.type.charAt(0).toUpperCase() + tag.type.slice(1) : 'Other'}
 									</p>
+									{#if tag.isRental}
+										<span class="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+											<KeyRound class="h-3 w-3" />
+											Rental
+										</span>
+									{/if}
 								</div>
 							</div>
 							<div class="flex gap-1">
