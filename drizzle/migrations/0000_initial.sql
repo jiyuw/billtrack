@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `asset_tags` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
 	`type` text,
+	`is_rental` integer DEFAULT false NOT NULL,
 	`color` text,
 	`banner_pattern` text DEFAULT 'solid' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
@@ -41,6 +42,7 @@ CREATE TABLE IF NOT EXISTS `bills` (
 	`recurrence_interval` integer,
 	`recurrence_unit` text,
 	`recurrence_day` integer,
+	`charge_to_tenant` integer DEFAULT false NOT NULL,
 	`is_paid` integer DEFAULT false NOT NULL,
 	`is_autopay` integer DEFAULT false NOT NULL,
 	`is_variable` integer DEFAULT false NOT NULL,
@@ -78,9 +80,22 @@ CREATE TABLE IF NOT EXISTS `bill_payments` (
 	FOREIGN KEY (`cycle_id`) REFERENCES `bill_cycles`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `rental_payment_notifications` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`payment_id` integer NOT NULL,
+	`is_notified` integer DEFAULT false NOT NULL,
+	`notified_on` integer,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`payment_id`) REFERENCES `bill_payments`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS `rental_payment_notifications_payment_id_unique` ON `rental_payment_notifications` (`payment_id`);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS `user_preferences` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`theme_preference` text DEFAULT 'system' NOT NULL,
+	`rental_management_enabled` integer DEFAULT false NOT NULL,
 	`expected_income_amount` real,
 	`current_balance` real,
 	`last_balance_update` integer,

@@ -7,6 +7,7 @@ import {
 	bills,
 	billCycles,
 	billPayments,
+	rentalPaymentNotifications,
 	categories,
 	assetTags,
 	paymentMethods,
@@ -26,6 +27,7 @@ export const GET: RequestHandler = async (event) => {
 				bills: db.select().from(bills).all(),
 				billCycles: db.select().from(billCycles).all(),
 				billPayments: db.select().from(billPayments).all(),
+				rentalPaymentNotifications: db.select().from(rentalPaymentNotifications).all(),
 				paymentMethods: db.select().from(paymentMethods).all(),
 				userPreferences: db.select().from(userPreferences).all()
 			}
@@ -42,6 +44,7 @@ export const GET: RequestHandler = async (event) => {
 				bills: exportData.data.bills.length,
 				billCycles: exportData.data.billCycles.length,
 				billPayments: exportData.data.billPayments.length,
+				rentalPaymentNotifications: exportData.data.rentalPaymentNotifications.length,
 				paymentMethods: exportData.data.paymentMethods.length,
 				userPreferences: exportData.data.userPreferences.length
 			}

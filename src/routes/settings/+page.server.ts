@@ -7,6 +7,7 @@ import {
 	bills,
 	billCycles,
 	billPayments,
+	rentalPaymentNotifications,
 	categories,
 	assetTags,
 	paymentMethods,
@@ -22,6 +23,7 @@ interface ImportData {
 		bills: any[];
 		billCycles: any[];
 		billPayments: any[];
+		rentalPaymentNotifications?: any[];
 		paymentMethods?: any[];
 		userPreferences?: any[];
 	};
@@ -95,6 +97,7 @@ export const actions: Actions = {
 			}
 
 			// Clear existing data (in reverse order due to foreign key constraints)
+			db.delete(rentalPaymentNotifications).run();
 			db.delete(billPayments).run();
 			db.delete(billCycles).run();
 			db.delete(bills).run();
@@ -109,6 +112,7 @@ export const actions: Actions = {
 				bills: 0,
 				billCycles: 0,
 				billPayments: 0,
+				rentalPaymentNotifications: 0,
 				paymentMethods: 0,
 				userPreferences: 0
 			};
@@ -152,6 +156,15 @@ export const actions: Actions = {
 				importedCounts.billPayments = importData.data.billPayments.length;
 			}
 
+			const importRentalPaymentNotifications = importData.data.rentalPaymentNotifications ?? [];
+			if (importRentalPaymentNotifications.length > 0) {
+				const convertedRentalPaymentNotifications = convertDatesToObjects(
+					importRentalPaymentNotifications
+				);
+				db.insert(rentalPaymentNotifications).values(convertedRentalPaymentNotifications).run();
+				importedCounts.rentalPaymentNotifications = importRentalPaymentNotifications.length;
+			}
+
 			const importUserPreferences = importData.data.userPreferences ?? [];
 			if (importUserPreferences.length > 0) {
 				const convertedPrefs = convertDatesToObjects(importUserPreferences);
@@ -188,6 +201,7 @@ export const actions: Actions = {
 			}
 
 			// Delete all data (in reverse order due to foreign key constraints)
+			db.delete(rentalPaymentNotifications).run();
 			db.delete(billPayments).run();
 			db.delete(billCycles).run();
 			db.delete(bills).run();

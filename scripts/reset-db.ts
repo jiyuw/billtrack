@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import * as schema from '../src/lib/server/db/schema';
+import * as schema from '../src/lib/server/db/schema.ts';
 
 const dbPath = './data/bills.db';
 
@@ -43,6 +43,33 @@ const drizzleDb = drizzle(db, { schema });
 const migrationsFolder = join(process.cwd(), 'drizzle', 'migrations');
 migrate(drizzleDb, { migrationsFolder });
 console.log('✓ Created database schema via migrations');
+
+const billColumns = db.prepare("PRAGMA table_info(bills)").all() as Array<{ name: string }>;
+const assetTagColumns = db.prepare("PRAGMA table_info(asset_tags)").all() as Array<{ name: string }>;
+const userPreferenceColumns = db.prepare("PRAGMA table_info(user_preferences)").all() as Array<{ name: string }>;
+const rentalNotificationsTable = db
+	.prepare(
+		"SELECT name FROM sqlite_master WHERE type='table' AND name='rental_payment_notifications'"
+	)
+	.get() as { name: string } | undefined;
+
+if (!billColumns.some((column) => column.name === 'charge_to_tenant')) {
+	throw new Error('Reset database is missing bills.charge_to_tenant');
+}
+
+if (!assetTagColumns.some((column) => column.name === 'is_rental')) {
+	throw new Error('Reset database is missing asset_tags.is_rental');
+}
+
+if (!userPreferenceColumns.some((column) => column.name === 'rental_management_enabled')) {
+	throw new Error('Reset database is missing user_preferences.rental_management_enabled');
+}
+
+if (!rentalNotificationsTable) {
+	throw new Error('Reset database is missing rental_payment_notifications');
+}
+
+console.log('✓ Verified rental schema in fresh database');
 
 db.close();
 
