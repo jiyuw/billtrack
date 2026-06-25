@@ -1,6 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { getRecentActivityLogs } from '$lib/server/db/activity-queries';
 
+const DEFAULT_ACTIVITY_LIMIT = 50;
+const MAX_ACTIVITY_LIMIT = 200;
+
 function parseDetails(details: string | null) {
 	if (!details) return null;
 
@@ -11,8 +14,12 @@ function parseDetails(details: string | null) {
 	}
 }
 
-export const load: PageServerLoad = async () => {
-	const rawLogs = getRecentActivityLogs(200);
+export const load: PageServerLoad = async ({ url }) => {
+	const requestedLimit = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
+	const limit = Number.isNaN(requestedLimit)
+		? DEFAULT_ACTIVITY_LIMIT
+		: Math.min(Math.max(requestedLimit, DEFAULT_ACTIVITY_LIMIT), MAX_ACTIVITY_LIMIT);
+	const rawLogs = getRecentActivityLogs(limit);
 	const logs = rawLogs.map((log) => ({
 		...log,
 		parsedDetails: parseDetails(log.details)
@@ -31,6 +38,9 @@ export const load: PageServerLoad = async () => {
 
 	return {
 		logs,
-		summary
+		summary,
+		limit,
+		nextLimit: Math.min(limit + DEFAULT_ACTIVITY_LIMIT, MAX_ACTIVITY_LIMIT),
+		hasMore: logs.length >= limit && limit < MAX_ACTIVITY_LIMIT
 	};
 };
