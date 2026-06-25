@@ -5,16 +5,24 @@ All notable changes to this project should be documented in this file.
 The format is intentionally simple and release-focused so it can double as GitHub release notes.
 
 
-## [Unreleased]
+## [1.5.0] - 2026-06-25
 
 ### Added
 
 - Added optional Rental Management, with a Settings toggle, rental asset flags, charge-to-tenant bill flags, and a Rentals page grouped by rental asset.
 - Added tenant notification tracking for chargeable rental payments, including yes/no notification status and notify date.
+- Added compact Activity browsing with filters, expandable details, and incremental loading.
 
 ### Fixed
 
 - Fixed edit-payment cycle selection so editing an existing payment keeps its original cycle instead of jumping to a newer unpaid cycle.
+- Improved Rental Management navigation responsiveness when toggling the setting.
+- Improved rental asset list styling, including type-specific icons, configured asset colors, inline rental badges, and neutral selected-state borders.
+
+### Notes
+
+- Release tag: `v1.5.0`
+- App version: `1.5.0`
 
 
 ## [1.4.2] - 2026-06-24
