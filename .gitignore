@@ -136,3 +136,6 @@ claude.md
 
 # Claude Code
 .claude/
+
+# Local worktrees
+.worktrees/
