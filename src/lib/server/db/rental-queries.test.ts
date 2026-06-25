@@ -165,3 +165,25 @@ test('bill form exposes charge-to-tenant only for rental assets', () => {
 	assert.match(dashboard, /chargeToTenant: editingBill\.chargeToTenant/);
 	assert.match(billDetail, /chargeToTenant: bill\.chargeToTenant/);
 });
+
+test('rentals page is wired to rental asset detail and notification rows', () => {
+	const rentalPageServer = readFileSync(
+		new URL('../../../../src/routes/rentals/+page.server.ts', import.meta.url),
+		'utf8'
+	);
+	const rentalPage = readFileSync(
+		new URL('../../../../src/routes/rentals/+page.svelte', import.meta.url),
+		'utf8'
+	);
+	const notificationRow = readFileSync(
+		new URL('../../../../src/lib/components/rentals/PaymentNotificationRow.svelte', import.meta.url),
+		'utf8'
+	);
+
+	assert.match(rentalPageServer, /getRentalAssets/);
+	assert.match(rentalPageServer, /getRentalAssetDetail/);
+	assert.match(rentalPage, /RentalAssetSelector/);
+	assert.match(rentalPage, /RentalBillGroup/);
+	assert.match(notificationRow, /\/api\/rentals\/payments\/\$\{payment\.id\}\/notification/);
+	assert.match(notificationRow, /notifiedOn/);
+});
