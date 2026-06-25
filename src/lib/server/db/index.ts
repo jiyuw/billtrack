@@ -98,6 +98,7 @@ function initializeDatabase() {
 	const hasAssetTagId = billColumns.some(col => col.name === 'asset_tag_id');
 	const hasCycleStartDate = billColumns.some(col => col.name === 'cycle_start_date');
 	const hasCycleEndDate = billColumns.some(col => col.name === 'cycle_end_date');
+	const hasChargeToTenant = billColumns.some((col) => col.name === 'charge_to_tenant');
 
 	if (!hasAutopay) {
 		sqlite.exec('ALTER TABLE bills ADD COLUMN is_autopay INTEGER NOT NULL DEFAULT 0');
@@ -137,6 +138,11 @@ function initializeDatabase() {
 	if (!hasCycleEndDate) {
 		sqlite.exec('ALTER TABLE bills ADD COLUMN cycle_end_date INTEGER');
 		console.log('Added cycle_end_date column to bills table');
+	}
+
+	if (!hasChargeToTenant) {
+		sqlite.exec('ALTER TABLE bills ADD COLUMN charge_to_tenant INTEGER NOT NULL DEFAULT 0');
+		console.log('Added charge_to_tenant column to bills table');
 	}
 
 	const billCycleColumns = sqlite.prepare("PRAGMA table_info(bill_cycles)").all() as Array<{ name: string }>;
@@ -218,9 +224,14 @@ function initializeDatabase() {
 	const hasAssetTagType = assetTagColumns.some((col) => col.name === 'type');
 	const hasAssetTagColor = assetTagColumns.some((col) => col.name === 'color');
 	const hasAssetTagBannerPattern = assetTagColumns.some((col) => col.name === 'banner_pattern');
+	const hasAssetTagIsRental = assetTagColumns.some((col) => col.name === 'is_rental');
 	if (!hasAssetTagType) {
 		sqlite.exec('ALTER TABLE asset_tags ADD COLUMN type TEXT');
 		console.log('Added type column to asset_tags table');
+	}
+	if (!hasAssetTagIsRental) {
+		sqlite.exec('ALTER TABLE asset_tags ADD COLUMN is_rental INTEGER NOT NULL DEFAULT 0');
+		console.log('Added is_rental column to asset_tags table');
 	}
 	if (!hasAssetTagColor) {
 		sqlite.exec('ALTER TABLE asset_tags ADD COLUMN color TEXT');
@@ -357,6 +368,37 @@ function initializeDatabase() {
 	if (!hasLastBalanceUpdate) {
 		sqlite.exec('ALTER TABLE user_preferences ADD COLUMN last_balance_update INTEGER');
 		console.log('Added last_balance_update column to user_preferences table');
+	}
+
+	const hasRentalManagementEnabled = userPrefColumns.some(
+		(col) => col.name === 'rental_management_enabled'
+	);
+
+	if (!hasRentalManagementEnabled) {
+		sqlite.exec(
+			'ALTER TABLE user_preferences ADD COLUMN rental_management_enabled INTEGER NOT NULL DEFAULT 0'
+		);
+		console.log('Added rental_management_enabled column to user_preferences table');
+	}
+
+	const rentalPaymentNotificationsTableExists = sqlite
+		.prepare(
+			"SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name='rental_payment_notifications'"
+		)
+		.get() as { count: number };
+
+	if (rentalPaymentNotificationsTableExists.count === 0) {
+		sqlite.exec(`
+			CREATE TABLE rental_payment_notifications (
+				id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+				payment_id INTEGER NOT NULL UNIQUE REFERENCES bill_payments(id) ON DELETE CASCADE,
+				is_notified INTEGER NOT NULL DEFAULT 0,
+				notified_on INTEGER,
+				created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+				updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+			)
+		`);
+		console.log('Created rental_payment_notifications table');
 	}
 	} catch (error) {
 		console.error('Migration error:', error);

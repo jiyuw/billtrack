@@ -15,6 +15,7 @@ export const assetTags = sqliteTable('asset_tags', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	name: text('name').notNull().unique(),
 	type: text('type', { enum: ['house', 'vehicle'] }),
+	isRental: integer('is_rental', { mode: 'boolean' }).notNull().default(false),
 	color: text('color'),
 	bannerPattern: text('banner_pattern', {
 		enum: ['solid', 'stripes', 'dots', 'crosshatch']
@@ -62,6 +63,7 @@ export const bills = sqliteTable('bills', {
 		enum: ['day', 'week', 'month', 'year']
 	}),
 	recurrenceDay: integer('recurrence_day'),
+	chargeToTenant: integer('charge_to_tenant', { mode: 'boolean' }).notNull().default(false),
 	isPaid: integer('is_paid', { mode: 'boolean' }).notNull().default(false),
 	isAutopay: integer('is_autopay', { mode: 'boolean' }).notNull().default(false),
 	isVariable: integer('is_variable', { mode: 'boolean' }).notNull().default(false),
@@ -111,7 +113,23 @@ export const billPayments = sqliteTable('bill_payments', {
 		.default(sql`(unixepoch())`),
 	updatedAt: integer('updated_at', { mode: 'timestamp' })
 		.notNull()
-	.default(sql`(unixepoch())`)
+		.default(sql`(unixepoch())`)
+});
+
+export const rentalPaymentNotifications = sqliteTable('rental_payment_notifications', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	paymentId: integer('payment_id')
+		.notNull()
+		.unique()
+		.references(() => billPayments.id, { onDelete: 'cascade' }),
+	isNotified: integer('is_notified', { mode: 'boolean' }).notNull().default(false),
+	notifiedOn: integer('notified_on', { mode: 'timestamp' }),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.default(sql`(unixepoch())`)
 });
 
 export const activityLogs = sqliteTable('activity_logs', {
@@ -150,6 +168,9 @@ export type NewBillCycle = typeof billCycles.$inferInsert;
 export type BillPayment = typeof billPayments.$inferSelect;
 export type NewBillPayment = typeof billPayments.$inferInsert;
 
+export type RentalPaymentNotification = typeof rentalPaymentNotifications.$inferSelect;
+export type NewRentalPaymentNotification = typeof rentalPaymentNotifications.$inferInsert;
+
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type NewActivityLog = typeof activityLogs.$inferInsert;
 
@@ -159,6 +180,9 @@ export const userPreferences = sqliteTable('user_preferences', {
 	themePreference: text('theme_preference', { enum: ['light', 'dark', 'system'] })
 		.notNull()
 		.default('system'),
+	rentalManagementEnabled: integer('rental_management_enabled', { mode: 'boolean' })
+		.notNull()
+		.default(false),
 	expectedIncomeAmount: real('expected_income_amount'), // Expected income per paycheck for forecasting
 	currentBalance: real('current_balance'), // Current account balance for cash flow projection
 	lastBalanceUpdate: integer('last_balance_update', { mode: 'timestamp' }), // When balance was last updated
