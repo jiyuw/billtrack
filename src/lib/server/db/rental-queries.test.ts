@@ -202,7 +202,9 @@ test('rental asset selector uses type-specific asset icons', () => {
 	assert.match(rentalAssetSelector, /color: string \| null/);
 	assert.match(rentalAssetSelector, /getAssetColor\(asset\)/);
 	assert.match(rentalAssetSelector, /background-color: \{assetColor\}20; color: \{assetColor\}/);
+	assert.match(rentalAssetSelector, /border-2 border-gray-950/);
 	assert.doesNotMatch(rentalAssetSelector, /bg-blue-50|bg-blue-950/);
+	assert.doesNotMatch(rentalAssetSelector, /border-blue-500/);
 });
 
 test('rental management toggle invalidates only layout preferences', () => {
