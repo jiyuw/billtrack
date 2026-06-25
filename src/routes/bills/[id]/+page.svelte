@@ -860,6 +860,7 @@
 				isAutopay: bill.isAutopay,
 				paymentMethodId: bill.paymentMethodId ?? undefined,
 				isVariable: bill.isVariable,
+				chargeToTenant: bill.chargeToTenant,
 				notes: bill.notes || undefined
 			}}
 			onSubmit={handleUpdateBill}

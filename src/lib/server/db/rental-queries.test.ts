@@ -147,3 +147,21 @@ test('settings and navigation expose rental controls conditionally', () => {
 	assert.match(settingsPage, /handleRentalManagementToggle/);
 	assert.match(assetTagModal, /bind:checked=\{assetTagForm\.isRental\}/);
 });
+
+test('bill form exposes charge-to-tenant only for rental assets', () => {
+	const billForm = readFileSync(
+		new URL('../../../../src/lib/components/BillForm.svelte', import.meta.url),
+		'utf8'
+	);
+	const dashboard = readFileSync(new URL('../../../../src/routes/+page.svelte', import.meta.url), 'utf8');
+	const billDetail = readFileSync(
+		new URL('../../../../src/routes/bills/[id]/+page.svelte', import.meta.url),
+		'utf8'
+	);
+
+	assert.match(billForm, /const selectedAssetIsRental = \$derived\.by/);
+	assert.match(billForm, /chargeToTenant: selectedAssetIsRental \? chargeToTenant : false/);
+	assert.match(billForm, /Charge tenant for this bill/);
+	assert.match(dashboard, /chargeToTenant: editingBill\.chargeToTenant/);
+	assert.match(billDetail, /chargeToTenant: bill\.chargeToTenant/);
+});

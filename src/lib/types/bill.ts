@@ -11,6 +11,7 @@ export interface BillWithCategory extends Bill {
 		id: number;
 		name: string;
 		type?: 'house' | 'vehicle' | null;
+		isRental?: boolean;
 		color?: string | null;
 		bannerPattern?: 'solid' | 'stripes' | 'dots' | 'crosshatch' | null;
 	} | null;
@@ -40,6 +41,7 @@ export interface BillWithCycle extends Bill {
 		id: number;
 		name: string;
 		type?: 'house' | 'vehicle' | null;
+		isRental?: boolean;
 		color?: string | null;
 		bannerPattern?: 'solid' | 'stripes' | 'dots' | 'crosshatch' | null;
 	} | null;
@@ -76,6 +78,7 @@ export interface BillFormData {
 	isAutopay: boolean;
 	paymentMethodId?: number | null;
 	isVariable?: boolean;
+	chargeToTenant?: boolean;
 	notes?: string;
 }
 

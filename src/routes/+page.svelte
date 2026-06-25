@@ -525,6 +525,7 @@
 				isAutopay: editingBill.isAutopay,
 				paymentMethodId: editingBill.paymentMethodId ?? undefined,
 				isVariable: editingBill.isVariable,
+				chargeToTenant: editingBill.chargeToTenant,
 				notes: editingBill.notes || undefined
 			}}
 			onSubmit={handleUpdateBill}

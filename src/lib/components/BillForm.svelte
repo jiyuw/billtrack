@@ -26,6 +26,7 @@
 			isAutopay?: boolean;
 			paymentMethodId?: number | null;
 			isVariable?: boolean;
+			chargeToTenant?: boolean;
 			notes?: string;
 		};
 		onSubmit: (data: any) => Promise<void>;
@@ -59,6 +60,7 @@
 	let isAutopay = $state(false);
 	let paymentMethodId = $state<number | null>(null);
 	let isVariable = $state(false);
+	let chargeToTenant = $state(false);
 	let notes = $state('');
 	let isSubmitting = $state(false);
 	let rebuildScope = $state<'future' | 'all'>('future');
@@ -88,12 +90,24 @@
 		isAutopay = initialData?.isAutopay || false;
 		paymentMethodId = initialData?.paymentMethodId ?? null;
 		isVariable = initialData?.isVariable || false;
+		chargeToTenant = initialData?.chargeToTenant || false;
 		notes = initialData?.notes || '';
+	});
+
+	const selectedAssetIsRental = $derived.by(() => {
+		if (assetTagId === null) return false;
+		return assetTags.some((tag) => tag.id === assetTagId && tag.isRental);
 	});
 
 	$effect(() => {
 		if (!isRecurring) {
 			isVariable = false;
+		}
+	});
+
+	$effect(() => {
+		if (!selectedAssetIsRental) {
+			chargeToTenant = false;
 		}
 	});
 
@@ -125,6 +139,7 @@
 				paymentLink: paymentLink || null,
 				categoryId,
 				assetTagId,
+				chargeToTenant: selectedAssetIsRental ? chargeToTenant : false,
 				isRecurring,
 				recurrenceInterval: isRecurring ? recurrenceInterval : null,
 				recurrenceUnit: isRecurring ? recurrenceUnit : null,
@@ -225,6 +240,22 @@
 					{/each}
 				</select>
 			</div>
+
+			{#if selectedAssetIsRental}
+				<label class="md:col-span-2 flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+					<input
+						type="checkbox"
+						bind:checked={chargeToTenant}
+						class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+					/>
+					<span>
+						<span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Charge tenant for this bill</span>
+						<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
+							Include this bill on the Rentals page for payment notification tracking.
+						</span>
+					</span>
+				</label>
+			{/if}
 
 			<div class="md:col-span-2">
 				<label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
