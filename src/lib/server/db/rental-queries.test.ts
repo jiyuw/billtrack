@@ -190,6 +190,17 @@ test('rentals page is wired to rental asset detail and notification rows', () =>
 	assert.match(notificationRow, /notifiedOn/);
 });
 
+test('rental asset selector uses type-specific asset icons', () => {
+	const rentalAssetSelector = readFileSync(
+		new URL('../../../../src/lib/components/rentals/RentalAssetSelector.svelte', import.meta.url),
+		'utf8'
+	);
+
+	assert.match(rentalAssetSelector, /import \{ Building2, Car, Home \} from 'lucide-svelte'/);
+	assert.match(rentalAssetSelector, /asset\.type === 'vehicle' \? Car/);
+	assert.match(rentalAssetSelector, /asset\.type === 'house' \? Home/);
+});
+
 test('rental management toggle invalidates only layout preferences', () => {
 	const layoutServer = readFileSync(
 		new URL('../../../../src/routes/+layout.server.ts', import.meta.url),

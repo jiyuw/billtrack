@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Building2 } from 'lucide-svelte';
+	import { Building2, Car, Home } from 'lucide-svelte';
 
 	type RentalAsset = {
 		id: number;
@@ -20,6 +20,7 @@
 
 <div class="space-y-3">
 	{#each assets as asset (asset.id)}
+		{@const AssetIcon = asset.type === 'vehicle' ? Car : asset.type === 'house' ? Home : Building2}
 		<a
 			href={`/rentals?asset=${asset.id}`}
 			class={`flex items-center justify-between gap-3 rounded-lg border p-4 transition ${
@@ -30,7 +31,7 @@
 		>
 			<span class="flex min-w-0 items-center gap-3">
 				<span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-					<Building2 class="h-5 w-5" />
+					<AssetIcon class="h-5 w-5" />
 				</span>
 				<span class="min-w-0">
 					<span class="block truncate text-sm font-semibold">{asset.name}</span>
