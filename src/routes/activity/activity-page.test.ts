@@ -10,6 +10,9 @@ test('activity page defaults to compact filtered activity browsing', () => {
 	assert.match(pageServer, /getRecentActivityLogs\(limit\)/);
 	assert.match(page, /let activeFilter = \$state/);
 	assert.match(page, /const filteredLogs = \$derived\.by/);
+	assert.match(page, /getFilterCardClasses/);
+	assert.match(page, /getFilterLabelClasses/);
+	assert.match(page, /getFilterCountClasses/);
 	assert.match(page, /expandedLogId/);
 	assert.match(page, /View details/);
 	assert.match(page, /Load more/);

@@ -199,6 +199,9 @@ test('rental asset selector uses type-specific asset icons', () => {
 	assert.match(rentalAssetSelector, /import \{ Building2, Car, Home \} from 'lucide-svelte'/);
 	assert.match(rentalAssetSelector, /asset\.type === 'vehicle' \? Car/);
 	assert.match(rentalAssetSelector, /asset\.type === 'house' \? Home/);
+	assert.match(rentalAssetSelector, /color: string \| null/);
+	assert.match(rentalAssetSelector, /getAssetColor\(asset\)/);
+	assert.match(rentalAssetSelector, /background-color: \{assetColor\}20; color: \{assetColor\}/);
 });
 
 test('rental management toggle invalidates only layout preferences', () => {

@@ -26,6 +26,38 @@
 		{ id: 'audit' as const, label: 'Audit', count: summary.audits }
 	]);
 
+	function getFilterCardClasses(filterId: ActivityFilter) {
+		const selectedRing = activeFilter === filterId ? ' ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-800' : '';
+
+		if (filterId === 'error') {
+			return `border-red-200 bg-red-50/80 hover:border-red-300 dark:border-red-900 dark:bg-red-950/20 dark:hover:border-red-800${selectedRing} ring-red-300 dark:ring-red-700`;
+		}
+
+		if (filterId === 'warn') {
+			return `border-amber-200 bg-amber-50/80 hover:border-amber-300 dark:border-amber-900 dark:bg-amber-950/20 dark:hover:border-amber-800${selectedRing} ring-amber-300 dark:ring-amber-700`;
+		}
+
+		if (filterId === 'audit') {
+			return `border-blue-200 bg-blue-50/80 hover:border-blue-300 dark:border-blue-900 dark:bg-blue-950/20 dark:hover:border-blue-800${selectedRing} ring-blue-300 dark:ring-blue-700`;
+		}
+
+		return `border-gray-200 bg-gray-50/80 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900/40 dark:hover:border-gray-600${selectedRing} ring-gray-300 dark:ring-gray-600`;
+	}
+
+	function getFilterLabelClasses(filterId: ActivityFilter) {
+		if (filterId === 'error') return 'text-red-600 dark:text-red-300';
+		if (filterId === 'warn') return 'text-amber-600 dark:text-amber-300';
+		if (filterId === 'audit') return 'text-blue-600 dark:text-blue-300';
+		return 'text-gray-500 dark:text-gray-400';
+	}
+
+	function getFilterCountClasses(filterId: ActivityFilter) {
+		if (filterId === 'error') return 'text-red-800 dark:text-red-100';
+		if (filterId === 'warn') return 'text-amber-800 dark:text-amber-100';
+		if (filterId === 'audit') return 'text-blue-800 dark:text-blue-100';
+		return 'text-gray-900 dark:text-gray-100';
+	}
+
 	function getLevelClasses(level: string) {
 		if (level === 'error') {
 			return 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200';
@@ -104,14 +136,10 @@
 						activeFilter = filter.id;
 						expandedLogId = null;
 					}}
-					class={`rounded-2xl border p-4 text-left transition ${
-						activeFilter === filter.id
-							? 'border-blue-300 bg-blue-50 shadow-sm dark:border-blue-800 dark:bg-blue-950/30'
-							: 'border-gray-200 bg-gray-50/80 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900/40 dark:hover:border-gray-600'
-					}`}
+					class={`rounded-2xl border p-4 text-left transition ${getFilterCardClasses(filter.id)}`}
 				>
-					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{filter.label}</p>
-					<p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{filter.count}</p>
+					<p class={`text-xs font-semibold uppercase tracking-[0.18em] ${getFilterLabelClasses(filter.id)}`}>{filter.label}</p>
+					<p class={`mt-2 text-2xl font-semibold ${getFilterCountClasses(filter.id)}`}>{filter.count}</p>
 				</button>
 			{/each}
 		</div>
